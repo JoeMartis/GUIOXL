@@ -277,6 +277,50 @@
             color: #888;
             margin-top: 2px;
         }
+
+        .answer-section {
+            display: none;
+        }
+
+        .answer-section.visible {
+            display: block;
+        }
+
+        .answer-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .answer-options {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .answer-options label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .tolerance-input {
+            width: 100px;
+            padding: 8px;
+            font-size: 13px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -291,6 +335,8 @@
                 <select id="problemType" onchange="updateProblemType()">
                     <option value="multiplechoiceresponse">Multiple Choice (Single Answer)</option>
                     <option value="choiceresponse">Checkboxes (Multiple Answers)</option>
+                    <option value="numericalresponse">Numerical Response</option>
+                    <option value="stringresponse">Text Response</option>
                 </select>
             </div>
 
@@ -303,12 +349,31 @@
                 </div>
             </div>
 
-            <div class="section">
+            <div class="section" id="choices-section">
                 <div class="section-header">
                     <span class="section-title">Answer Choices</span>
                     <button class="btn btn-primary btn-sm" onclick="addChoice()">+ Add Choice</button>
                 </div>
                 <div id="choices-container"></div>
+            </div>
+
+            <div class="section answer-section" id="answer-section">
+                <div class="section-header">
+                    <span class="section-title">Correct Answer</span>
+                </div>
+                <input type="text" id="correct-answer" class="answer-input" placeholder="Enter the correct answer...">
+                <div class="answer-options" id="numerical-options">
+                    <label>
+                        Tolerance: &#177;
+                        <input type="text" id="answer-tolerance" class="tolerance-input" placeholder="e.g., 5%">
+                    </label>
+                </div>
+                <div class="answer-options" id="string-options" style="display: none;">
+                    <label>
+                        <input type="checkbox" id="string-case-sensitive">
+                        Case sensitive
+                    </label>
+                </div>
             </div>
 
             <div class="section">
@@ -451,29 +516,53 @@
 
         function updateProblemType() {
             const problemType = document.getElementById('problemType').value;
-            const inputType = problemType === 'choiceresponse' ? 'checkbox' : 'radio';
+            const choicesSection = document.getElementById('choices-section');
+            const answerSection = document.getElementById('answer-section');
+            const numericalOptions = document.getElementById('numerical-options');
+            const stringOptions = document.getElementById('string-options');
 
-            // Update all existing choice inputs
-            document.querySelectorAll('.choice-item').forEach(item => {
-                const input = item.querySelector('input');
-                const wasChecked = input.checked;
-                const value = input.value;
+            // Show/hide sections based on problem type
+            if (problemType === 'numericalresponse' || problemType === 'stringresponse') {
+                choicesSection.classList.add('hidden');
+                answerSection.classList.add('visible');
 
-                input.type = inputType;
-
-                // For radio, keep only first checked; for checkbox, preserve all
-                if (inputType === 'radio') {
-                    item.classList.remove('correct');
-                    input.checked = false;
+                if (problemType === 'numericalresponse') {
+                    numericalOptions.style.display = 'flex';
+                    stringOptions.style.display = 'none';
+                    document.getElementById('correct-answer').placeholder = 'Enter the correct numerical answer...';
+                } else {
+                    numericalOptions.style.display = 'none';
+                    stringOptions.style.display = 'flex';
+                    document.getElementById('correct-answer').placeholder = 'Enter the correct text answer...';
                 }
-            });
+            } else {
+                choicesSection.classList.remove('hidden');
+                answerSection.classList.remove('visible');
 
-            // If switching to radio, select first choice as correct by default
-            if (inputType === 'radio') {
-                const firstInput = document.querySelector('.choice-item input');
-                if (firstInput) {
-                    firstInput.checked = true;
-                    firstInput.closest('.choice-item').classList.add('correct');
+                const inputType = problemType === 'choiceresponse' ? 'checkbox' : 'radio';
+
+                // Update all existing choice inputs
+                document.querySelectorAll('.choice-item').forEach(item => {
+                    const input = item.querySelector('input');
+                    const wasChecked = input.checked;
+                    const value = input.value;
+
+                    input.type = inputType;
+
+                    // For radio, keep only first checked; for checkbox, preserve all
+                    if (inputType === 'radio') {
+                        item.classList.remove('correct');
+                        input.checked = false;
+                    }
+                });
+
+                // If switching to radio, select first choice as correct by default
+                if (inputType === 'radio') {
+                    const firstInput = document.querySelector('.choice-item input');
+                    if (firstInput) {
+                        firstInput.checked = true;
+                        firstInput.closest('.choice-item').classList.add('correct');
+                    }
                 }
             }
         }
@@ -535,23 +624,6 @@
             const labelHtml = quillToHtml(labelEditor);
             const explanationHtml = quillToHtml(explanationEditor);
 
-            // Gather choices
-            const choices = [];
-            const choiceElements = document.querySelectorAll('.choice-item');
-
-            choiceElements.forEach(element => {
-                const id = element.id.replace('choice-', '');
-                const editor = choiceEditors[id];
-                if (editor) {
-                    const input = element.querySelector('input');
-                    const isCorrect = input.checked;
-                    const html = quillToHtml(editor);
-                    if (html) {
-                        choices.push({ html, isCorrect });
-                    }
-                }
-            });
-
             // Gather hints
             const hints = [];
             const hintElements = document.querySelectorAll('.hint-item');
@@ -569,7 +641,45 @@
             // Build OLX
             let olx = `<problem>\n`;
 
-            if (problemType === 'multiplechoiceresponse') {
+            if (problemType === 'numericalresponse') {
+                const answer = document.getElementById('correct-answer').value || '';
+                const tolerance = document.getElementById('answer-tolerance').value || '';
+
+                olx += `  <numericalresponse answer="${answer}"`;
+                if (tolerance) {
+                    olx += ` tolerance="${tolerance}"`;
+                }
+                olx += `>\n`;
+                olx += `    <label>${labelHtml}</label>\n`;
+                olx += `    <textline/>\n`;
+                olx += `  </numericalresponse>\n`;
+
+            } else if (problemType === 'stringresponse') {
+                const answer = document.getElementById('correct-answer').value || '';
+                const caseSensitive = document.getElementById('string-case-sensitive').checked;
+
+                olx += `  <stringresponse answer="${answer}" type="${caseSensitive ? 'cs' : 'ci'}">\n`;
+                olx += `    <label>${labelHtml}</label>\n`;
+                olx += `    <textline size="20"/>\n`;
+                olx += `  </stringresponse>\n`;
+
+            } else if (problemType === 'multiplechoiceresponse') {
+                // Gather choices
+                const choices = [];
+                const choiceElements = document.querySelectorAll('.choice-item');
+                choiceElements.forEach(element => {
+                    const id = element.id.replace('choice-', '');
+                    const editor = choiceEditors[id];
+                    if (editor) {
+                        const input = element.querySelector('input');
+                        const isCorrect = input.checked;
+                        const html = quillToHtml(editor);
+                        if (html) {
+                            choices.push({ html, isCorrect });
+                        }
+                    }
+                });
+
                 olx += `  <multiplechoiceresponse>\n`;
                 olx += `    <label>${labelHtml}</label>\n`;
                 olx += `    <choicegroup type="MultipleChoice">\n`;
@@ -581,8 +691,24 @@
 
                 olx += `    </choicegroup>\n`;
                 olx += `  </multiplechoiceresponse>\n`;
+
             } else {
                 // choiceresponse (checkboxes)
+                const choices = [];
+                const choiceElements = document.querySelectorAll('.choice-item');
+                choiceElements.forEach(element => {
+                    const id = element.id.replace('choice-', '');
+                    const editor = choiceEditors[id];
+                    if (editor) {
+                        const input = element.querySelector('input');
+                        const isCorrect = input.checked;
+                        const html = quillToHtml(editor);
+                        if (html) {
+                            choices.push({ html, isCorrect });
+                        }
+                    }
+                });
+
                 olx += `  <choiceresponse>\n`;
                 olx += `    <label>${labelHtml}</label>\n`;
                 olx += `    <checkboxgroup>\n`;
@@ -659,6 +785,11 @@
             document.getElementById('hints-container').innerHTML = '';
             hintEditors = [];
             hintCount = 0;
+
+            // Clear answer fields
+            document.getElementById('correct-answer').value = '';
+            document.getElementById('answer-tolerance').value = '';
+            document.getElementById('string-case-sensitive').checked = false;
         }
 
         // Add choice with content
@@ -762,20 +893,30 @@
                 // Detect problem type
                 const multipleChoice = doc.querySelector('multiplechoiceresponse');
                 const checkboxChoice = doc.querySelector('choiceresponse');
+                const numericalResponse = doc.querySelector('numericalresponse');
+                const stringResponse = doc.querySelector('stringresponse');
 
                 let problemType, responseElement;
                 if (multipleChoice) {
                     problemType = 'multiplechoiceresponse';
                     responseElement = multipleChoice;
-                    document.getElementById('problemType').value = 'multiplechoiceresponse';
                 } else if (checkboxChoice) {
                     problemType = 'choiceresponse';
                     responseElement = checkboxChoice;
-                    document.getElementById('problemType').value = 'choiceresponse';
+                } else if (numericalResponse) {
+                    problemType = 'numericalresponse';
+                    responseElement = numericalResponse;
+                } else if (stringResponse) {
+                    problemType = 'stringresponse';
+                    responseElement = stringResponse;
                 } else {
-                    alert('Unsupported problem type. Only multiplechoiceresponse and choiceresponse are supported.');
+                    alert('Unsupported problem type.');
                     return;
                 }
+
+                // Set problem type dropdown and update UI
+                document.getElementById('problemType').value = problemType;
+                updateProblemType();
 
                 // Extract label/question
                 const labelEl = responseElement.querySelector('label');
@@ -783,13 +924,28 @@
                     labelEditor.root.innerHTML = labelEl.innerHTML;
                 }
 
-                // Extract choices
-                const choices = responseElement.querySelectorAll('choice');
-                choices.forEach(choice => {
-                    const isCorrect = choice.getAttribute('correct') === 'true';
-                    const html = choice.innerHTML;
-                    addChoiceWithContent(html, isCorrect);
-                });
+                // Handle different problem types
+                if (problemType === 'numericalresponse') {
+                    const answer = responseElement.getAttribute('answer') || '';
+                    const tolerance = responseElement.getAttribute('tolerance') || '';
+                    document.getElementById('correct-answer').value = answer;
+                    document.getElementById('answer-tolerance').value = tolerance;
+
+                } else if (problemType === 'stringresponse') {
+                    const answer = responseElement.getAttribute('answer') || '';
+                    const type = responseElement.getAttribute('type') || 'ci';
+                    document.getElementById('correct-answer').value = answer;
+                    document.getElementById('string-case-sensitive').checked = (type === 'cs');
+
+                } else {
+                    // Extract choices for multiple choice / checkbox
+                    const choices = responseElement.querySelectorAll('choice');
+                    choices.forEach(choice => {
+                        const isCorrect = choice.getAttribute('correct') === 'true';
+                        const html = choice.innerHTML;
+                        addChoiceWithContent(html, isCorrect);
+                    });
+                }
 
                 // Extract solution/explanation
                 const solution = doc.querySelector('solution');
