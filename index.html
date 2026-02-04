@@ -664,14 +664,14 @@
             html = html.replace(/<div class="ql-code-block-container"[^>]*>.*?<\/div><\/div>/gs, '');
             html = html.replace(/<div class="ql-code-block"[^>]*>(.*?)<\/div>/gs, '<code>$1</code>');
 
-            // Remove all <p> tags - convert </p><p> to <br> for line breaks
-            html = html.replace(/<\/p>\s*<p>/g, '<br>');
+            // Strip <p> tags completely, preserve content with space between paragraphs
+            html = html.replace(/<\/p>\s*<p>/g, ' ');
             html = html.replace(/<p>/g, '');
             html = html.replace(/<\/p>/g, '');
+            html = html.replace(/<br>/g, ' ');
 
-            // Clean up empty breaks and whitespace
-            html = html.replace(/<br>\s*$/g, '');
-            html = html.replace(/^\s*<br>/g, '');
+            // Clean up multiple spaces
+            html = html.replace(/\s+/g, ' ');
 
             return html.trim();
         }
