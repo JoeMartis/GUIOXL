@@ -266,6 +266,35 @@
             opacity: 1;
         }
 
+        .problem-settings {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .problem-settings label {
+            font-weight: 600;
+            color: #444;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .problem-settings input {
+            width: 100%;
+            padding: 8px 10px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .problem-settings .max-attempts-field {
+            width: 80px;
+        }
+
         .problem-type-selector {
             margin-bottom: 20px;
         }
@@ -363,6 +392,17 @@
         </div>
 
         <div class="editor-panel">
+            <div class="problem-settings">
+                <div>
+                    <label for="display-name">Display Name</label>
+                    <input type="text" id="display-name" placeholder="e.g., Homework 3.1">
+                </div>
+                <div>
+                    <label for="max-attempts">Attempts</label>
+                    <input type="number" id="max-attempts" class="max-attempts-field" min="0" placeholder="∞">
+                </div>
+            </div>
+
             <div class="problem-type-selector">
                 <label class="section-title">Problem Type</label>
                 <select id="problemType" onchange="updateProblemType()">
@@ -703,7 +743,12 @@
             });
 
             // Build OLX
-            let olx = `<problem>\n`;
+            const displayName = document.getElementById('display-name').value;
+            const maxAttempts = document.getElementById('max-attempts').value;
+            let problemAttrs = '';
+            if (displayName) problemAttrs += ` display_name="${escapeXml(displayName)}"`;
+            if (maxAttempts) problemAttrs += ` max_attempts="${escapeXml(maxAttempts)}"`;
+            let olx = `<problem${problemAttrs}>\n`;
 
             if (problemType === 'numericalresponse') {
                 const answer = escapeXml(document.getElementById('correct-answer').value || '');
@@ -829,6 +874,8 @@
             document.getElementById('correct-answer').value = '';
             document.getElementById('answer-tolerance').value = '';
             document.getElementById('string-case-sensitive').checked = false;
+            document.getElementById('display-name').value = '';
+            document.getElementById('max-attempts').value = '';
             choiceCount = 0;
             hintCount = 0;
         }
@@ -852,6 +899,13 @@
                 }
 
                 clearAllEditors();
+
+                // Extract problem-level attributes
+                const problemEl = doc.querySelector('problem');
+                if (problemEl) {
+                    document.getElementById('display-name').value = problemEl.getAttribute('display_name') || '';
+                    document.getElementById('max-attempts').value = problemEl.getAttribute('max_attempts') || '';
+                }
 
                 // Detect problem type
                 const multipleChoice = doc.querySelector('multiplechoiceresponse');
@@ -978,6 +1032,8 @@
         document.getElementById('correct-answer').addEventListener('input', debouncedGenerate);
         document.getElementById('answer-tolerance').addEventListener('input', debouncedGenerate);
         document.getElementById('string-case-sensitive').addEventListener('change', debouncedGenerate);
+        document.getElementById('display-name').addEventListener('input', debouncedGenerate);
+        document.getElementById('max-attempts').addEventListener('input', debouncedGenerate);
     </script>
 </body>
 </html>
