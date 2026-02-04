@@ -344,7 +344,7 @@
                 <div class="output-header">
                     <span class="output-title">OLX</span>
                 </div>
-                <p class="import-instructions">Paste OLX here to edit it visually. Changes auto-sync both ways.</p>
+                <p class="import-instructions">Paste OLX here to import and edit visually. Edits in the right panel auto-update this OLX.</p>
             </div>
             <textarea id="olx-output" placeholder="Paste OLX here..."></textarea>
             <div class="btn-group" style="margin-top: 15px; justify-content: flex-end;">
@@ -782,14 +782,19 @@
             const output = document.getElementById('olx-output');
             if (!output.value) generateOLX();
 
-            navigator.clipboard.writeText(output.value).then(() => {
-                showFeedback('Copied to clipboard!', '#4caf50');
-            }).catch(() => {
-                // Fallback for older browsers
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(output.value).then(() => {
+                    showFeedback('Copied to clipboard!', '#4caf50');
+                }).catch(() => {
+                    output.select();
+                    document.execCommand('copy');
+                    showFeedback('Copied to clipboard!', '#4caf50');
+                });
+            } else {
                 output.select();
                 document.execCommand('copy');
                 showFeedback('Copied to clipboard!', '#4caf50');
-            });
+            }
         }
 
         let feedbackTimer = null;
