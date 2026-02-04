@@ -329,6 +329,19 @@
     <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
 
     <div class="editor-container">
+        <div class="output-panel">
+            <div class="import-section">
+                <div class="output-header">
+                    <span class="output-title">OLX</span>
+                </div>
+                <p class="import-instructions">Paste OLX here to edit it visually. Changes auto-sync both ways.</p>
+            </div>
+            <textarea id="olx-output" placeholder="Paste OLX here..."></textarea>
+            <div class="btn-group" style="margin-top: 15px; justify-content: flex-end;">
+                <button class="btn btn-success" onclick="copyOLX()">Copy to Clipboard</button>
+            </div>
+        </div>
+
         <div class="editor-panel">
             <div class="problem-type-selector">
                 <label class="section-title">Problem Type</label>
@@ -391,21 +404,6 @@
                     <button class="btn btn-primary btn-sm" onclick="addHint()">+ Add Hint</button>
                 </div>
                 <div id="hints-container"></div>
-            </div>
-        </div>
-
-        <div class="output-panel">
-            <div class="import-section">
-                <div class="output-header">
-                    <span class="output-title">Import / Edit OLX</span>
-                    <button class="btn btn-warning" onclick="importOLX()">Import OLX</button>
-                </div>
-                <p class="import-instructions">Paste your OLX below and click "Import OLX" to load it into the editor. Or edit visually and generate new OLX.</p>
-            </div>
-            <textarea id="olx-output" placeholder="Paste OLX here to import, or use the editor above to create new problems..."></textarea>
-            <div class="btn-group" style="margin-top: 15px; justify-content: flex-end;">
-                <button class="btn btn-primary" onclick="generateOLX()">Generate OLX</button>
-                <button class="btn btn-success" onclick="copyOLX()">Copy to Clipboard</button>
             </div>
         </div>
     </div>
@@ -620,6 +618,9 @@
         }
 
         function generateOLX() {
+            if (isImporting) return; // Don't generate while importing
+
+            isGenerating = true;
             const problemType = document.getElementById('problemType').value;
             const labelHtml = quillToHtml(labelEditor);
             const explanationHtml = quillToHtml(explanationEditor);
@@ -744,6 +745,7 @@
             olx += `</problem>`;
 
             document.getElementById('olx-output').value = olx;
+            isGenerating = false;
         }
 
         function copyOLX() {
@@ -867,13 +869,25 @@
             return editor;
         }
 
+        // Flag to prevent import loops
+        let isImporting = false;
+        let isGenerating = false;
+
         // Import OLX into editor
-        function importOLX() {
+        function importOLX(silent = false) {
+            if (isGenerating) return; // Don't import while generating
+
             const olxText = document.getElementById('olx-output').value.trim();
             if (!olxText) {
-                alert('Please paste OLX content into the text area first.');
                 return;
             }
+
+            // Quick check if it looks like OLX
+            if (!olxText.includes('<problem')) {
+                return;
+            }
+
+            isImporting = true;
 
             try {
                 // Parse the XML
@@ -883,8 +897,8 @@
                 // Check for parse errors
                 const parseError = doc.querySelector('parsererror');
                 if (parseError) {
-                    alert('Invalid XML. Please check your OLX format.');
-                    return;
+                    isImporting = false;
+                    return; // Silently fail for invalid XML
                 }
 
                 // Clear existing content
@@ -910,8 +924,8 @@
                     problemType = 'stringresponse';
                     responseElement = stringResponse;
                 } else {
-                    alert('Unsupported problem type.');
-                    return;
+                    isImporting = false;
+                    return; // Unsupported problem type
                 }
 
                 // Set problem type dropdown and update UI
@@ -985,20 +999,24 @@
                     });
                 }
 
-                // Show success feedback
-                const feedback = document.getElementById('copyFeedback');
-                feedback.textContent = 'OLX imported successfully!';
-                feedback.style.background = '#0075b4';
-                feedback.classList.add('show');
-                setTimeout(() => {
-                    feedback.classList.remove('show');
-                    feedback.textContent = 'Copied to clipboard!';
-                    feedback.style.background = '#4caf50';
-                }, 2000);
+                // Show success feedback (unless silent)
+                if (!silent) {
+                    const feedback = document.getElementById('copyFeedback');
+                    feedback.textContent = 'OLX imported!';
+                    feedback.style.background = '#0075b4';
+                    feedback.classList.add('show');
+                    setTimeout(() => {
+                        feedback.classList.remove('show');
+                        feedback.textContent = 'Copied to clipboard!';
+                        feedback.style.background = '#4caf50';
+                    }, 1500);
+                }
+
+                isImporting = false;
 
             } catch (e) {
                 console.error('Import error:', e);
-                alert('Error importing OLX: ' + e.message);
+                isImporting = false;
             }
         }
 
@@ -1021,10 +1039,24 @@
         }
 
         // Initialize - start empty for import workflow
-        // User can click "Add Choice" to add choices manually
-        // or paste OLX and click "Import OLX"
-
         setupAutoGenerate();
+
+        // Auto-import when OLX is pasted
+        const olxTextarea = document.getElementById('olx-output');
+        olxTextarea.addEventListener('paste', (e) => {
+            // Use setTimeout to let the paste complete first
+            setTimeout(() => {
+                importOLX(false);
+            }, 50);
+        });
+
+        // Also try to import on input (for other paste methods)
+        olxTextarea.addEventListener('input', debounce(() => {
+            const text = olxTextarea.value.trim();
+            if (text.includes('<problem') && !isGenerating) {
+                importOLX(true); // Silent import on regular input
+            }
+        }, 300));
     </script>
 </body>
 </html>
