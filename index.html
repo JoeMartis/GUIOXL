@@ -91,6 +91,10 @@
             background: #e9e9e9;
         }
 
+        .toolbar button:active {
+            background: #d4d4d4;
+        }
+
         .content-editable {
             min-height: 80px;
             padding: 10px;
@@ -340,7 +344,7 @@
                 <div class="output-header">
                     <span class="output-title">OLX</span>
                 </div>
-                <p class="import-instructions">Paste OLX here to edit it visually. Changes auto-sync both ways.</p>
+                <p class="import-instructions">Paste OLX here to import and edit visually. Edits in the right panel auto-update this OLX.</p>
             </div>
             <textarea id="olx-output" placeholder="Paste OLX here..."></textarea>
             <div class="btn-group" style="margin-top: 15px; justify-content: flex-end;">
@@ -455,6 +459,16 @@
                     element.textContent = selectedText;
                     range.deleteContents();
                     range.insertNode(element);
+                    // Place cursor after the inserted element
+                    range.setStartAfter(element);
+                    range.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    // Trigger OLX update since DOM manipulation doesn't fire input events
+                    const editableEl = element.closest('.content-editable');
+                    if (editableEl) {
+                        editableEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
                 }
             }
         }
@@ -470,6 +484,7 @@
         // Get innerHTML from contenteditable, returns empty string if just whitespace
         function getEditorContent(id) {
             const el = document.getElementById(id);
+            if (!el) return '';
             const html = el.innerHTML.trim();
             if (html === '' || html === '<br>') return '';
             return html;
@@ -517,7 +532,7 @@
             const element = document.getElementById(`choice-${id}`);
             if (element) {
                 element.remove();
-                validateChoices();
+                generateOLX();
             }
         }
 
@@ -541,7 +556,7 @@
                     choiceDiv.classList.add('correct');
                 }
             }
-            validateChoices();
+            generateOLX();
         }
 
         function validateChoices() {
@@ -607,6 +622,7 @@
                     }
                 }
             }
+            generateOLX();
         }
 
         // Hint management
@@ -643,6 +659,7 @@
             const element = document.getElementById(`hint-${id}`);
             if (element) {
                 element.remove();
+                generateOLX();
             }
         }
 
@@ -765,11 +782,32 @@
             const output = document.getElementById('olx-output');
             if (!output.value) generateOLX();
 
-            navigator.clipboard.writeText(output.value).then(() => {
-                const feedback = document.getElementById('copyFeedback');
-                feedback.classList.add('show');
-                setTimeout(() => feedback.classList.remove('show'), 2000);
-            });
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(output.value).then(() => {
+                    showFeedback('Copied to clipboard!', '#4caf50');
+                }).catch(() => {
+                    output.select();
+                    document.execCommand('copy');
+                    showFeedback('Copied to clipboard!', '#4caf50');
+                });
+            } else {
+                output.select();
+                document.execCommand('copy');
+                showFeedback('Copied to clipboard!', '#4caf50');
+            }
+        }
+
+        let feedbackTimer = null;
+        function showFeedback(text, color) {
+            if (feedbackTimer) clearTimeout(feedbackTimer);
+            const feedback = document.getElementById('copyFeedback');
+            feedback.textContent = text;
+            feedback.style.background = color;
+            feedback.classList.add('show');
+            feedbackTimer = setTimeout(() => {
+                feedback.classList.remove('show');
+                feedbackTimer = null;
+            }, 2000);
         }
 
         // Clear all editors
@@ -867,7 +905,11 @@
                 // Extract solution
                 const solution = doc.querySelector('solution');
                 if (solution) {
-                    let content = getInnerContent(solution);
+                    // Try to get content from inside detailed-solution div to avoid nesting on round-trip
+                    const detailedDiv = solution.querySelector('[class="detailed-solution"]');
+                    const sourceEl = detailedDiv || solution;
+                    let content = getInnerContent(sourceEl);
+                    // Strip "Explanation" header paragraph
                     content = content.replace(/<p>\s*Explanation\s*<\/p>/gi, '');
                     document.getElementById('explanation-editor').innerHTML = content.trim();
                 }
@@ -880,15 +922,7 @@
                 }
 
                 if (!silent) {
-                    const feedback = document.getElementById('copyFeedback');
-                    feedback.textContent = 'OLX imported!';
-                    feedback.style.background = '#0075b4';
-                    feedback.classList.add('show');
-                    setTimeout(() => {
-                        feedback.classList.remove('show');
-                        feedback.textContent = 'Copied to clipboard!';
-                        feedback.style.background = '#4caf50';
-                    }, 1500);
+                    showFeedback('OLX imported!', '#0075b4');
                 }
 
                 setTimeout(() => { isImporting = false; }, 600);
@@ -898,6 +932,13 @@
                 isImporting = false;
             }
         }
+
+        // Prevent toolbar buttons from stealing focus from contenteditable
+        document.querySelector('.editor-panel').addEventListener('mousedown', (e) => {
+            if (e.target.closest('.toolbar')) {
+                e.preventDefault();
+            }
+        });
 
         // Auto-import on paste
         const olxTextarea = document.getElementById('olx-output');
