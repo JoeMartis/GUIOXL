@@ -431,7 +431,7 @@
         // Quill toolbar configuration
         const toolbarOptions = [
             ['bold', 'italic', 'underline', 'strike'],
-            ['code-block', 'blockquote'],
+            ['code', 'blockquote'],
             ['link'],
             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
             [{ 'script': 'sub'}, { 'script': 'super' }],
@@ -440,7 +440,7 @@
 
         const minimalToolbar = [
             ['bold', 'italic', 'underline'],
-            ['code-block'],
+            ['code'],
             ['link'],
             ['clean']
         ];
@@ -659,7 +659,22 @@
             let html = editor.root.innerHTML;
             // Clean up empty paragraphs
             if (html === '<p><br></p>') return '';
-            return html;
+
+            // Remove Quill's code-block containers if any remain
+            html = html.replace(/<div class="ql-code-block-container"[^>]*>.*?<\/div><\/div>/gs, '');
+            html = html.replace(/<div class="ql-code-block"[^>]*>(.*?)<\/div>/gs, '<code>$1</code>');
+
+            // If content is just a single paragraph, unwrap it
+            const singlePMatch = html.match(/^<p>(.*)<\/p>$/s);
+            if (singlePMatch && !singlePMatch[1].includes('<p>')) {
+                html = singlePMatch[1];
+            }
+
+            // Clean up empty paragraphs
+            html = html.replace(/<p><br><\/p>/g, '');
+            html = html.replace(/<p><\/p>/g, '');
+
+            return html.trim();
         }
 
         function generateOLX() {
