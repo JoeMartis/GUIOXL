@@ -1030,24 +1030,11 @@
                     const detailedSolution = solution.querySelector('[class="detailed-solution"]') ||
                                              solution.querySelector('div.detailed-solution');
                     if (detailedSolution) {
-                        // Get content after the "Explanation" paragraph if present
-                        let content = '';
-                        const children = detailedSolution.children;
-                        let foundExplanationHeader = false;
-                        for (let i = 0; i < children.length; i++) {
-                            const child = children[i];
-                            if (foundExplanationHeader) {
-                                content += child.outerHTML;
-                            } else if (child.textContent.trim().toLowerCase() === 'explanation') {
-                                foundExplanationHeader = true;
-                            } else {
-                                content += child.outerHTML;
-                            }
-                        }
-                        if (!content) {
-                            content = detailedSolution.innerHTML;
-                        }
-                        explanationEditor.root.innerHTML = content;
+                        // Get innerHTML and remove the "Explanation" header paragraph
+                        let content = detailedSolution.innerHTML;
+                        // Remove <p>Explanation</p> header (case insensitive)
+                        content = content.replace(/<p>\s*Explanation\s*<\/p>/i, '');
+                        explanationEditor.root.innerHTML = content.trim();
                     } else {
                         explanationEditor.root.innerHTML = solution.innerHTML;
                     }
