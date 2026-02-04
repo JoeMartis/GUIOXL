@@ -1025,9 +1025,16 @@
                 // Extract solution/explanation - get everything inside <solution>
                 const solution = doc.querySelector('solution');
                 if (solution) {
-                    let content = solution.innerHTML;
+                    // Use XMLSerializer since innerHTML may not work on XML documents
+                    const serializer = new XMLSerializer();
+                    let content = '';
+                    for (const child of solution.childNodes) {
+                        content += serializer.serializeToString(child);
+                    }
                     // Remove <p>Explanation</p> header if present (case insensitive)
                     content = content.replace(/<p>\s*Explanation\s*<\/p>/gi, '');
+                    // Remove xmlns attributes added by serializer
+                    content = content.replace(/\s*xmlns="[^"]*"/g, '');
                     explanationEditor.root.innerHTML = content.trim();
                 }
 
