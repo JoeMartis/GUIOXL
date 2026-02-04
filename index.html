@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open edX Problem Editor</title>
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            color: #0075b4;
+            margin-bottom: 30px;
+        }
+
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .editor-panel, .output-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            font-weight: 600;
+            color: #444;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .quill-wrapper {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .quill-wrapper .ql-container {
+            min-height: 100px;
+            font-size: 14px;
+        }
+
+        .quill-wrapper.small .ql-container {
+            min-height: 60px;
+        }
+
+        .ql-toolbar {
+            border: none !important;
+            border-bottom: 1px solid #ddd !important;
+            background: #fafafa;
+        }
+
+        .ql-container {
+            border: none !important;
+        }
+
+        .choice-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+
+        .choice-item.correct {
+            background: #e8f5e9;
+            border-color: #a5d6a7;
+        }
+
+        .choice-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding-top: 8px;
+        }
+
+        .choice-editor {
+            flex: 1;
+        }
+
+        .choice-editor .quill-wrapper .ql-container {
+            min-height: 50px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #0075b4;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #005a8c;
+        }
+
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #388e3c;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .radio-label input {
+            cursor: pointer;
+        }
+
+        #olx-output {
+            width: 100%;
+            height: 400px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            resize: vertical;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .output-title {
+            font-weight: 600;
+            color: #444;
+            font-size: 16px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .copy-feedback {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4caf50;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .copy-feedback.show {
+            opacity: 1;
+        }
+
+        .problem-type-selector {
+            margin-bottom: 20px;
+        }
+
+        .problem-type-selector select {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .hint-section {
+            margin-top: 10px;
+        }
+
+        .hint-item {
+            margin-bottom: 10px;
+        }
+
+        .add-btn-container {
+            margin-top: 10px;
+        }
+
+        /* Checkbox styling for multiple select */
+        .choice-type-indicator {
+            font-size: 11px;
+            color: #888;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Open edX Problem Editor</h1>
+
+    <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+
+    <div class="editor-container">
+        <div class="editor-panel">
+            <div class="problem-type-selector">
+                <label class="section-title">Problem Type</label>
+                <select id="problemType" onchange="updateProblemType()">
+                    <option value="multiplechoiceresponse">Multiple Choice (Single Answer)</option>
+                    <option value="choiceresponse">Checkboxes (Multiple Answers)</option>
+                </select>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-title">Problem Label / Question</span>
+                </div>
+                <div class="quill-wrapper">
+                    <div id="label-editor"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-title">Answer Choices</span>
+                    <button class="btn btn-primary btn-sm" onclick="addChoice()">+ Add Choice</button>
+                </div>
+                <div id="choices-container"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-title">Explanation / Solution</span>
+                </div>
+                <div class="quill-wrapper">
+                    <div id="explanation-editor"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-title">Hints (Optional)</span>
+                    <button class="btn btn-primary btn-sm" onclick="addHint()">+ Add Hint</button>
+                </div>
+                <div id="hints-container"></div>
+            </div>
+        </div>
+
+        <div class="output-panel">
+            <div class="output-header">
+                <span class="output-title">Generated OLX</span>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="generateOLX()">Generate OLX</button>
+                    <button class="btn btn-success" onclick="copyOLX()">Copy to Clipboard</button>
+                </div>
+            </div>
+            <textarea id="olx-output" readonly placeholder="Click 'Generate OLX' to see the output..."></textarea>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+    <script>
+        // Quill toolbar configuration
+        const toolbarOptions = [
+            ['bold', 'italic', 'underline', 'strike'],
+            ['code-block', 'blockquote'],
+            ['link'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'script': 'sub'}, { 'script': 'super' }],
+            ['clean']
+        ];
+
+        const minimalToolbar = [
+            ['bold', 'italic', 'underline'],
+            ['code-block'],
+            ['link'],
+            ['clean']
+        ];
+
+        // Initialize main editors
+        const labelEditor = new Quill('#label-editor', {
+            theme: 'snow',
+            modules: { toolbar: toolbarOptions },
+            placeholder: 'Enter your question here...'
+        });
+
+        const explanationEditor = new Quill('#explanation-editor', {
+            theme: 'snow',
+            modules: { toolbar: toolbarOptions },
+            placeholder: 'Enter the explanation/solution here...'
+        });
+
+        // Choice management
+        let choiceEditors = [];
+        let choiceCount = 0;
+        let hintEditors = [];
+        let hintCount = 0;
+
+        function addChoice(isCorrect = false) {
+            const container = document.getElementById('choices-container');
+            const choiceId = choiceCount++;
+            const problemType = document.getElementById('problemType').value;
+            const inputType = problemType === 'choiceresponse' ? 'checkbox' : 'radio';
+
+            const choiceDiv = document.createElement('div');
+            choiceDiv.className = 'choice-item' + (isCorrect ? ' correct' : '');
+            choiceDiv.id = `choice-${choiceId}`;
+            choiceDiv.innerHTML = `
+                <div class="choice-controls">
+                    <label class="radio-label">
+                        <input type="${inputType}" name="correct-choice" value="${choiceId}" ${isCorrect ? 'checked' : ''} onchange="updateCorrectChoice(${choiceId})">
+                        Correct
+                    </label>
+                    <button class="btn btn-danger" onclick="removeChoice(${choiceId})">Remove</button>
+                </div>
+                <div class="choice-editor">
+                    <div class="quill-wrapper small">
+                        <div id="choice-editor-${choiceId}"></div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(choiceDiv);
+
+            const editor = new Quill(`#choice-editor-${choiceId}`, {
+                theme: 'snow',
+                modules: { toolbar: minimalToolbar },
+                placeholder: 'Enter choice text...'
+            });
+
+            choiceEditors[choiceId] = editor;
+        }
+
+        function removeChoice(id) {
+            const element = document.getElementById(`choice-${id}`);
+            if (element) {
+                element.remove();
+                delete choiceEditors[id];
+            }
+        }
+
+        function updateCorrectChoice(id) {
+            const problemType = document.getElementById('problemType').value;
+
+            if (problemType === 'choiceresponse') {
+                // Checkboxes - multiple can be correct
+                const choiceDiv = document.getElementById(`choice-${id}`);
+                const checkbox = choiceDiv.querySelector('input[type="checkbox"]');
+                if (checkbox.checked) {
+                    choiceDiv.classList.add('correct');
+                } else {
+                    choiceDiv.classList.remove('correct');
+                }
+            } else {
+                // Radio buttons - only one correct
+                document.querySelectorAll('.choice-item').forEach(item => {
+                    item.classList.remove('correct');
+                });
+                const choiceDiv = document.getElementById(`choice-${id}`);
+                if (choiceDiv) {
+                    choiceDiv.classList.add('correct');
+                }
+            }
+        }
+
+        function updateProblemType() {
+            const problemType = document.getElementById('problemType').value;
+            const inputType = problemType === 'choiceresponse' ? 'checkbox' : 'radio';
+
+            // Update all existing choice inputs
+            document.querySelectorAll('.choice-item').forEach(item => {
+                const input = item.querySelector('input');
+                const wasChecked = input.checked;
+                const value = input.value;
+
+                input.type = inputType;
+
+                // For radio, keep only first checked; for checkbox, preserve all
+                if (inputType === 'radio') {
+                    item.classList.remove('correct');
+                    input.checked = false;
+                }
+            });
+
+            // If switching to radio, select first choice as correct by default
+            if (inputType === 'radio') {
+                const firstInput = document.querySelector('.choice-item input');
+                if (firstInput) {
+                    firstInput.checked = true;
+                    firstInput.closest('.choice-item').classList.add('correct');
+                }
+            }
+        }
+
+        function addHint() {
+            const container = document.getElementById('hints-container');
+            const hintId = hintCount++;
+
+            const hintDiv = document.createElement('div');
+            hintDiv.className = 'hint-item';
+            hintDiv.id = `hint-${hintId}`;
+            hintDiv.innerHTML = `
+                <div style="display: flex; gap: 10px; align-items: flex-start;">
+                    <div style="flex: 1;">
+                        <div class="quill-wrapper small">
+                            <div id="hint-editor-${hintId}"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" onclick="removeHint(${hintId})" style="margin-top: 8px;">Remove</button>
+                </div>
+            `;
+            container.appendChild(hintDiv);
+
+            const editor = new Quill(`#hint-editor-${hintId}`, {
+                theme: 'snow',
+                modules: { toolbar: minimalToolbar },
+                placeholder: 'Enter hint text...'
+            });
+
+            hintEditors[hintId] = editor;
+        }
+
+        function removeHint(id) {
+            const element = document.getElementById(`hint-${id}`);
+            if (element) {
+                element.remove();
+                delete hintEditors[id];
+            }
+        }
+
+        function escapeXml(text) {
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        function quillToHtml(editor) {
+            let html = editor.root.innerHTML;
+            // Clean up empty paragraphs
+            if (html === '<p><br></p>') return '';
+            return html;
+        }
+
+        function generateOLX() {
+            const problemType = document.getElementById('problemType').value;
+            const labelHtml = quillToHtml(labelEditor);
+            const explanationHtml = quillToHtml(explanationEditor);
+
+            // Gather choices
+            const choices = [];
+            const choiceElements = document.querySelectorAll('.choice-item');
+
+            choiceElements.forEach(element => {
+                const id = element.id.replace('choice-', '');
+                const editor = choiceEditors[id];
+                if (editor) {
+                    const input = element.querySelector('input');
+                    const isCorrect = input.checked;
+                    const html = quillToHtml(editor);
+                    if (html) {
+                        choices.push({ html, isCorrect });
+                    }
+                }
+            });
+
+            // Gather hints
+            const hints = [];
+            const hintElements = document.querySelectorAll('.hint-item');
+            hintElements.forEach(element => {
+                const id = element.id.replace('hint-', '');
+                const editor = hintEditors[id];
+                if (editor) {
+                    const html = quillToHtml(editor);
+                    if (html) {
+                        hints.push(html);
+                    }
+                }
+            });
+
+            // Build OLX
+            let olx = `<problem>\n`;
+
+            if (problemType === 'multiplechoiceresponse') {
+                olx += `  <multiplechoiceresponse>\n`;
+                olx += `    <label>${labelHtml}</label>\n`;
+                olx += `    <choicegroup type="MultipleChoice">\n`;
+
+                choices.forEach(choice => {
+                    const correct = choice.isCorrect ? 'true' : 'false';
+                    olx += `      <choice correct="${correct}">${choice.html}</choice>\n`;
+                });
+
+                olx += `    </choicegroup>\n`;
+                olx += `  </multiplechoiceresponse>\n`;
+            } else {
+                // choiceresponse (checkboxes)
+                olx += `  <choiceresponse>\n`;
+                olx += `    <label>${labelHtml}</label>\n`;
+                olx += `    <checkboxgroup>\n`;
+
+                choices.forEach(choice => {
+                    const correct = choice.isCorrect ? 'true' : 'false';
+                    olx += `      <choice correct="${correct}">${choice.html}</choice>\n`;
+                });
+
+                olx += `    </checkboxgroup>\n`;
+                olx += `  </choiceresponse>\n`;
+            }
+
+            // Add solution/explanation
+            if (explanationHtml) {
+                olx += `  <solution>\n`;
+                olx += `    <div class="detailed-solution">\n`;
+                olx += `      <p>Explanation</p>\n`;
+                olx += `      ${explanationHtml}\n`;
+                olx += `    </div>\n`;
+                olx += `  </solution>\n`;
+            }
+
+            // Add hints
+            if (hints.length > 0) {
+                olx += `  <demandhint>\n`;
+                hints.forEach(hint => {
+                    olx += `    <hint>${hint}</hint>\n`;
+                });
+                olx += `  </demandhint>\n`;
+            }
+
+            olx += `</problem>`;
+
+            document.getElementById('olx-output').value = olx;
+        }
+
+        function copyOLX() {
+            const output = document.getElementById('olx-output');
+            if (!output.value) {
+                generateOLX();
+            }
+
+            navigator.clipboard.writeText(output.value).then(() => {
+                const feedback = document.getElementById('copyFeedback');
+                feedback.classList.add('show');
+                setTimeout(() => {
+                    feedback.classList.remove('show');
+                }, 2000);
+            }).catch(err => {
+                // Fallback for older browsers
+                output.select();
+                document.execCommand('copy');
+                const feedback = document.getElementById('copyFeedback');
+                feedback.classList.add('show');
+                setTimeout(() => {
+                    feedback.classList.remove('show');
+                }, 2000);
+            });
+        }
+
+        // Auto-generate OLX on content change
+        function setupAutoGenerate() {
+            labelEditor.on('text-change', debounce(generateOLX, 500));
+            explanationEditor.on('text-change', debounce(generateOLX, 500));
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Initialize with some default choices
+        addChoice(true);  // First choice, marked as correct
+        addChoice(false);
+        addChoice(false);
+        addChoice(false);
+
+        setupAutoGenerate();
+
+        // Generate initial OLX
+        setTimeout(generateOLX, 100);
+    </script>
+</body>
+</html>
