@@ -187,6 +187,11 @@
             background: #d32f2f;
         }
 
+        .btn-clear {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
         .btn-sm {
             padding: 4px 10px;
             font-size: 12px;
@@ -387,7 +392,7 @@
             </div>
             <textarea id="olx-output" placeholder="Paste OLX here..."></textarea>
             <div class="btn-group" style="margin-top: 15px; justify-content: flex-end;">
-                <button class="btn btn-danger" onclick="clearAll()">Clear</button>
+                <button class="btn btn-danger btn-clear" onclick="clearAll()">Clear</button>
                 <button class="btn btn-success" onclick="copyOLX()">Copy to Clipboard</button>
             </div>
         </div>
@@ -425,8 +430,8 @@
                         <button onclick="formatDoc('underline')" title="Underline"><u>U</u></button>
                         <button onclick="wrapWithTag('code')" title="Code">&lt;/&gt;</button>
                         <button onclick="insertLink()" title="Link">Link</button>
-                        <button onclick="insertLatex('inline')" title="Inline Math \\( \\)">∑ inline</button>
-                        <button onclick="insertLatex('display')" title="Display Math \\[ \\]">∑ block</button>
+                        <button onclick="insertLatex('inline')" title="Inline Math \( \)">∑ inline</button>
+                        <button onclick="insertLatex('display')" title="Display Math \[ \]">∑ block</button>
                     </div>
                     <div id="label-editor" class="content-editable" contenteditable="true" data-placeholder="Enter your question here..."></div>
                 </div>
@@ -473,8 +478,8 @@
                         <button onclick="formatDoc('underline')" title="Underline"><u>U</u></button>
                         <button onclick="wrapWithTag('code')" title="Code">&lt;/&gt;</button>
                         <button onclick="insertLink()" title="Link">Link</button>
-                        <button onclick="insertLatex('inline')" title="Inline Math \\( \\)">∑ inline</button>
-                        <button onclick="insertLatex('display')" title="Display Math \\[ \\]">∑ block</button>
+                        <button onclick="insertLatex('inline')" title="Inline Math \( \)">∑ inline</button>
+                        <button onclick="insertLatex('display')" title="Display Math \[ \]">∑ block</button>
                         <button onclick="formatDoc('insertUnorderedList')" title="Bullet List">• List</button>
                     </div>
                     <div id="explanation-editor" class="content-editable" contenteditable="true" data-placeholder="Enter the explanation/solution here..."></div>
@@ -918,10 +923,12 @@
 
         // Clear everything
         function clearAll() {
+            isImporting = true;
             clearAllEditors();
             document.getElementById('olx-output').value = '';
             document.getElementById('problemType').value = 'multiplechoiceresponse';
             updateProblemType();
+            isImporting = false;
         }
 
         // Import OLX
