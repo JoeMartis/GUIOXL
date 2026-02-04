@@ -657,22 +657,21 @@
 
         function quillToHtml(editor) {
             let html = editor.root.innerHTML;
-            // Clean up empty paragraphs
+            // Clean up empty content
             if (html === '<p><br></p>') return '';
 
             // Remove Quill's code-block containers if any remain
             html = html.replace(/<div class="ql-code-block-container"[^>]*>.*?<\/div><\/div>/gs, '');
             html = html.replace(/<div class="ql-code-block"[^>]*>(.*?)<\/div>/gs, '<code>$1</code>');
 
-            // If content is just a single paragraph, unwrap it
-            const singlePMatch = html.match(/^<p>(.*)<\/p>$/s);
-            if (singlePMatch && !singlePMatch[1].includes('<p>')) {
-                html = singlePMatch[1];
-            }
+            // Remove all <p> tags - convert </p><p> to <br> for line breaks
+            html = html.replace(/<\/p>\s*<p>/g, '<br>');
+            html = html.replace(/<p>/g, '');
+            html = html.replace(/<\/p>/g, '');
 
-            // Clean up empty paragraphs
-            html = html.replace(/<p><br><\/p>/g, '');
-            html = html.replace(/<p><\/p>/g, '');
+            // Clean up empty breaks and whitespace
+            html = html.replace(/<br>\s*$/g, '');
+            html = html.replace(/^\s*<br>/g, '');
 
             return html.trim();
         }
