@@ -570,13 +570,21 @@
             }
         }
 
-        // Get innerHTML from contenteditable, returns empty string if just whitespace
+        // Get innerHTML from contenteditable, clean up browser-generated divs
         function getEditorContent(id) {
             const el = document.getElementById(id);
             if (!el) return '';
-            const html = el.innerHTML.trim();
+            let html = el.innerHTML.trim();
             if (html === '' || html === '<br>') return '';
-            return html;
+            // Convert browser-generated div line wrapping to <br/>
+            html = html.replace(/<div><br\s*\/?><\/div>/gi, '<br/>');
+            html = html.replace(/<\/div><div>/gi, '<br/>');
+            html = html.replace(/<\/?div>/gi, '');
+            // Normalize all br variants to self-closing
+            html = html.replace(/<br\s*\/?>/gi, '<br/>');
+            // Collapse 3+ consecutive br tags to 2
+            html = html.replace(/(<br\/>){3,}/g, '<br/><br/>');
+            return html.trim();
         }
 
         // Choice management
