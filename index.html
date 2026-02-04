@@ -425,6 +425,8 @@
                         <button onclick="formatDoc('underline')" title="Underline"><u>U</u></button>
                         <button onclick="wrapWithTag('code')" title="Code">&lt;/&gt;</button>
                         <button onclick="insertLink()" title="Link">Link</button>
+                        <button onclick="insertLatex('inline')" title="Inline Math \\( \\)">∑ inline</button>
+                        <button onclick="insertLatex('display')" title="Display Math \\[ \\]">∑ block</button>
                     </div>
                     <div id="label-editor" class="content-editable" contenteditable="true" data-placeholder="Enter your question here..."></div>
                 </div>
@@ -471,6 +473,8 @@
                         <button onclick="formatDoc('underline')" title="Underline"><u>U</u></button>
                         <button onclick="wrapWithTag('code')" title="Code">&lt;/&gt;</button>
                         <button onclick="insertLink()" title="Link">Link</button>
+                        <button onclick="insertLatex('inline')" title="Inline Math \\( \\)">∑ inline</button>
+                        <button onclick="insertLatex('display')" title="Display Math \\[ \\]">∑ block</button>
                         <button onclick="formatDoc('insertUnorderedList')" title="Bullet List">• List</button>
                     </div>
                     <div id="explanation-editor" class="content-editable" contenteditable="true" data-placeholder="Enter the explanation/solution here..."></div>
@@ -524,6 +528,35 @@
             }
         }
 
+        // Insert LaTeX delimiters
+        function insertLatex(mode) {
+            const open = mode === 'display' ? '\\[' : '\\(';
+            const close = mode === 'display' ? '\\]' : '\\)';
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const selectedText = range.toString();
+                const latex = open + (selectedText || ' ') + close;
+                range.deleteContents();
+                const textNode = document.createTextNode(latex);
+                range.insertNode(textNode);
+                // Place cursor inside the delimiters (before the closing)
+                if (!selectedText) {
+                    range.setStart(textNode, open.length);
+                    range.setEnd(textNode, open.length + 1);
+                } else {
+                    range.setStartAfter(textNode);
+                    range.collapse(true);
+                }
+                selection.removeAllRanges();
+                selection.addRange(range);
+                const editableEl = textNode.parentElement.closest('.content-editable');
+                if (editableEl) {
+                    editableEl.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            }
+        }
+
         // Insert a link
         function insertLink() {
             const url = prompt('Enter URL:');
@@ -565,6 +598,7 @@
                             <button onclick="formatDoc('bold')" title="Bold"><b>B</b></button>
                             <button onclick="formatDoc('italic')" title="Italic"><i>I</i></button>
                             <button onclick="wrapWithTag('code')" title="Code">&lt;/&gt;</button>
+                            <button onclick="insertLatex('inline')" title="Inline Math">∑</button>
                         </div>
                         <div id="choice-editor-${choiceId}" class="content-editable" contenteditable="true" data-placeholder="Enter choice text..."></div>
                     </div>
@@ -692,6 +726,7 @@
                                 <button onclick="formatDoc('bold')" title="Bold"><b>B</b></button>
                                 <button onclick="formatDoc('italic')" title="Italic"><i>I</i></button>
                                 <button onclick="wrapWithTag('code')" title="Code">&lt;/&gt;</button>
+                                <button onclick="insertLatex('inline')" title="Inline Math">∑</button>
                             </div>
                             <div id="hint-editor-${hintId}" class="content-editable" contenteditable="true" data-placeholder="Enter hint text..."></div>
                         </div>
