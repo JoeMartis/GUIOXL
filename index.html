@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Open edX Problem Editor</title>
-    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
     <style>
         * {
             box-sizing: border-box;
@@ -63,29 +62,45 @@
             letter-spacing: 0.5px;
         }
 
-        .quill-wrapper {
+        .editor-box {
             border: 1px solid #ddd;
             border-radius: 4px;
             overflow: hidden;
         }
 
-        .quill-wrapper .ql-container {
-            min-height: 100px;
-            font-size: 14px;
-        }
-
-        .quill-wrapper.small .ql-container {
-            min-height: 60px;
-        }
-
-        .ql-toolbar {
-            border: none !important;
-            border-bottom: 1px solid #ddd !important;
+        .toolbar {
             background: #fafafa;
+            border-bottom: 1px solid #ddd;
+            padding: 5px;
+            display: flex;
+            gap: 2px;
+            flex-wrap: wrap;
         }
 
-        .ql-container {
-            border: none !important;
+        .toolbar button {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            min-width: 30px;
+        }
+
+        .toolbar button:hover {
+            background: #e9e9e9;
+        }
+
+        .content-editable {
+            min-height: 80px;
+            padding: 10px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .content-editable:empty:before {
+            content: attr(data-placeholder);
+            color: #999;
         }
 
         .choice-item {
@@ -108,15 +123,15 @@
             display: flex;
             flex-direction: column;
             gap: 5px;
-            padding-top: 8px;
+            padding-top: 5px;
         }
 
         .choice-editor {
             flex: 1;
         }
 
-        .choice-editor .quill-wrapper .ql-container {
-            min-height: 50px;
+        .choice-editor .content-editable {
+            min-height: 40px;
         }
 
         .btn {
@@ -190,15 +205,6 @@
             resize: vertical;
         }
 
-        .btn-warning {
-            background: #ff9800;
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background: #f57c00;
-        }
-
         .import-section {
             margin-bottom: 15px;
             padding-bottom: 15px;
@@ -259,23 +265,27 @@
             background: white;
         }
 
-        .hint-section {
-            margin-top: 10px;
-        }
-
         .hint-item {
             margin-bottom: 10px;
         }
 
-        .add-btn-container {
-            margin-top: 10px;
+        .hidden {
+            display: none !important;
         }
 
-        /* Checkbox styling for multiple select */
-        .choice-type-indicator {
-            font-size: 11px;
-            color: #888;
-            margin-top: 2px;
+        .validation-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            display: none;
+        }
+
+        .validation-warning.show {
+            display: block;
         }
 
         .answer-section {
@@ -317,25 +327,6 @@
             border: 1px solid #ddd;
             border-radius: 4px;
         }
-
-        .hidden {
-            display: none !important;
-        }
-
-        .validation-warning {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            color: #856404;
-            padding: 10px 15px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            font-size: 13px;
-            display: none;
-        }
-
-        .validation-warning.show {
-            display: block;
-        }
     </style>
 </head>
 <body>
@@ -372,8 +363,15 @@
                 <div class="section-header">
                     <span class="section-title">Problem Label / Question</span>
                 </div>
-                <div class="quill-wrapper">
-                    <div id="label-editor"></div>
+                <div class="editor-box">
+                    <div class="toolbar">
+                        <button onclick="formatDoc('bold')" title="Bold"><b>B</b></button>
+                        <button onclick="formatDoc('italic')" title="Italic"><i>I</i></button>
+                        <button onclick="formatDoc('underline')" title="Underline"><u>U</u></button>
+                        <button onclick="wrapWithTag('code')" title="Code">&lt;/&gt;</button>
+                        <button onclick="insertLink()" title="Link">Link</button>
+                    </div>
+                    <div id="label-editor" class="content-editable" contenteditable="true" data-placeholder="Enter your question here..."></div>
                 </div>
             </div>
 
@@ -395,7 +393,7 @@
                 <input type="text" id="correct-answer" class="answer-input" placeholder="Enter the correct answer...">
                 <div class="answer-options" id="numerical-options">
                     <label>
-                        Tolerance: &#177;
+                        Tolerance: ±
                         <input type="text" id="answer-tolerance" class="tolerance-input" placeholder="e.g., 5%">
                     </label>
                 </div>
@@ -411,8 +409,16 @@
                 <div class="section-header">
                     <span class="section-title">Explanation / Solution</span>
                 </div>
-                <div class="quill-wrapper">
-                    <div id="explanation-editor"></div>
+                <div class="editor-box">
+                    <div class="toolbar">
+                        <button onclick="formatDoc('bold')" title="Bold"><b>B</b></button>
+                        <button onclick="formatDoc('italic')" title="Italic"><i>I</i></button>
+                        <button onclick="formatDoc('underline')" title="Underline"><u>U</u></button>
+                        <button onclick="wrapWithTag('code')" title="Code">&lt;/&gt;</button>
+                        <button onclick="insertLink()" title="Link">Link</button>
+                        <button onclick="formatDoc('insertUnorderedList')" title="Bullet List">• List</button>
+                    </div>
+                    <div id="explanation-editor" class="content-editable" contenteditable="true" data-placeholder="Enter the explanation/solution here..."></div>
                 </div>
             </div>
 
@@ -426,49 +432,51 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
     <script>
-        // Quill toolbar configuration
-        const toolbarOptions = [
-            ['bold', 'italic', 'underline', 'strike'],
-            ['code', 'blockquote'],
-            ['link'],
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            [{ 'script': 'sub'}, { 'script': 'super' }],
-            ['clean']
-        ];
-
-        const minimalToolbar = [
-            ['bold', 'italic', 'underline'],
-            ['code'],
-            ['link'],
-            ['clean']
-        ];
-
-        // Initialize main editors
-        const labelEditor = new Quill('#label-editor', {
-            theme: 'snow',
-            modules: { toolbar: toolbarOptions },
-            placeholder: 'Enter your question here...'
-        });
-
-        const explanationEditor = new Quill('#explanation-editor', {
-            theme: 'snow',
-            modules: { toolbar: toolbarOptions },
-            placeholder: 'Enter the explanation/solution here...'
-        });
-
-        // Choice management
-        let choiceEditors = [];
+        // State
         let choiceCount = 0;
-        let hintEditors = [];
         let hintCount = 0;
-
-        // Flags to prevent import/generate loops (must be declared before use)
         let isImporting = false;
         let isGenerating = false;
 
-        function addChoice(isCorrect = false) {
+        // Format document using execCommand
+        function formatDoc(command, value = null) {
+            document.execCommand(command, false, value);
+        }
+
+        // Wrap selection with a tag
+        function wrapWithTag(tag) {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const selectedText = range.toString();
+                if (selectedText) {
+                    const element = document.createElement(tag);
+                    element.textContent = selectedText;
+                    range.deleteContents();
+                    range.insertNode(element);
+                }
+            }
+        }
+
+        // Insert a link
+        function insertLink() {
+            const url = prompt('Enter URL:');
+            if (url) {
+                formatDoc('createLink', url);
+            }
+        }
+
+        // Get innerHTML from contenteditable, returns empty string if just whitespace
+        function getEditorContent(id) {
+            const el = document.getElementById(id);
+            const html = el.innerHTML.trim();
+            if (html === '' || html === '<br>') return '';
+            return html;
+        }
+
+        // Choice management
+        function addChoice(isCorrect = false, content = '') {
             const container = document.getElementById('choices-container');
             const choiceId = choiceCount++;
             const problemType = document.getElementById('problemType').value;
@@ -486,27 +494,29 @@
                     <button class="btn btn-danger" onclick="removeChoice(${choiceId})">Remove</button>
                 </div>
                 <div class="choice-editor">
-                    <div class="quill-wrapper small">
-                        <div id="choice-editor-${choiceId}"></div>
+                    <div class="editor-box">
+                        <div class="toolbar">
+                            <button onclick="formatDoc('bold')" title="Bold"><b>B</b></button>
+                            <button onclick="formatDoc('italic')" title="Italic"><i>I</i></button>
+                            <button onclick="wrapWithTag('code')" title="Code">&lt;/&gt;</button>
+                        </div>
+                        <div id="choice-editor-${choiceId}" class="content-editable" contenteditable="true" data-placeholder="Enter choice text..."></div>
                     </div>
                 </div>
             `;
             container.appendChild(choiceDiv);
 
-            const editor = new Quill(`#choice-editor-${choiceId}`, {
-                theme: 'snow',
-                modules: { toolbar: minimalToolbar },
-                placeholder: 'Enter choice text...'
-            });
+            if (content) {
+                document.getElementById(`choice-editor-${choiceId}`).innerHTML = content;
+            }
 
-            choiceEditors[choiceId] = editor;
+            return choiceId;
         }
 
         function removeChoice(id) {
             const element = document.getElementById(`choice-${id}`);
             if (element) {
                 element.remove();
-                delete choiceEditors[id];
                 validateChoices();
             }
         }
@@ -515,7 +525,6 @@
             const problemType = document.getElementById('problemType').value;
 
             if (problemType === 'choiceresponse') {
-                // Checkboxes - multiple can be correct
                 const choiceDiv = document.getElementById(`choice-${id}`);
                 const checkbox = choiceDiv.querySelector('input[type="checkbox"]');
                 if (checkbox.checked) {
@@ -524,7 +533,6 @@
                     choiceDiv.classList.remove('correct');
                 }
             } else {
-                // Radio buttons - only one correct
                 document.querySelectorAll('.choice-item').forEach(item => {
                     item.classList.remove('correct');
                 });
@@ -533,8 +541,28 @@
                     choiceDiv.classList.add('correct');
                 }
             }
-
             validateChoices();
+        }
+
+        function validateChoices() {
+            const problemType = document.getElementById('problemType').value;
+            const warning = document.getElementById('no-correct-warning');
+
+            if (problemType === 'numericalresponse' || problemType === 'stringresponse') {
+                warning.classList.remove('show');
+                return true;
+            }
+
+            const hasCorrect = document.querySelector('.choice-item input:checked') !== null;
+            const hasChoices = document.querySelectorAll('.choice-item').length > 0;
+
+            if (hasChoices && !hasCorrect) {
+                warning.classList.add('show');
+                return false;
+            } else {
+                warning.classList.remove('show');
+                return true;
+            }
         }
 
         function updateProblemType() {
@@ -544,7 +572,6 @@
             const numericalOptions = document.getElementById('numerical-options');
             const stringOptions = document.getElementById('string-options');
 
-            // Show/hide sections based on problem type
             if (problemType === 'numericalresponse' || problemType === 'stringresponse') {
                 choicesSection.classList.add('hidden');
                 answerSection.classList.add('visible');
@@ -563,20 +590,15 @@
                 answerSection.classList.remove('visible');
 
                 const inputType = problemType === 'choiceresponse' ? 'checkbox' : 'radio';
-
-                // Update all existing choice inputs
                 document.querySelectorAll('.choice-item').forEach(item => {
                     const input = item.querySelector('input');
                     input.type = inputType;
-
-                    // For radio, keep only first checked; for checkbox, preserve all
                     if (inputType === 'radio') {
                         item.classList.remove('correct');
                         input.checked = false;
                     }
                 });
 
-                // If switching to radio, select first choice as correct by default
                 if (inputType === 'radio') {
                     const firstInput = document.querySelector('.choice-item input');
                     if (firstInput) {
@@ -587,7 +609,8 @@
             }
         }
 
-        function addHint() {
+        // Hint management
+        function addHint(content = '') {
             const container = document.getElementById('hints-container');
             const hintId = hintCount++;
 
@@ -597,8 +620,13 @@
             hintDiv.innerHTML = `
                 <div style="display: flex; gap: 10px; align-items: flex-start;">
                     <div style="flex: 1;">
-                        <div class="quill-wrapper small">
-                            <div id="hint-editor-${hintId}"></div>
+                        <div class="editor-box">
+                            <div class="toolbar">
+                                <button onclick="formatDoc('bold')" title="Bold"><b>B</b></button>
+                                <button onclick="formatDoc('italic')" title="Italic"><i>I</i></button>
+                                <button onclick="wrapWithTag('code')" title="Code">&lt;/&gt;</button>
+                            </div>
+                            <div id="hint-editor-${hintId}" class="content-editable" contenteditable="true" data-placeholder="Enter hint text..."></div>
                         </div>
                     </div>
                     <button class="btn btn-danger" onclick="removeHint(${hintId})" style="margin-top: 8px;">Remove</button>
@@ -606,23 +634,19 @@
             `;
             container.appendChild(hintDiv);
 
-            const editor = new Quill(`#hint-editor-${hintId}`, {
-                theme: 'snow',
-                modules: { toolbar: minimalToolbar },
-                placeholder: 'Enter hint text...'
-            });
-
-            hintEditors[hintId] = editor;
+            if (content) {
+                document.getElementById(`hint-editor-${hintId}`).innerHTML = content;
+            }
         }
 
         function removeHint(id) {
             const element = document.getElementById(`hint-${id}`);
             if (element) {
                 element.remove();
-                delete hintEditors[id];
             }
         }
 
+        // XML escaping
         function escapeXml(text) {
             return text
                 .replace(/&/g, '&amp;')
@@ -632,76 +656,23 @@
                 .replace(/'/g, '&apos;');
         }
 
-        function validateChoices() {
-            const problemType = document.getElementById('problemType').value;
-            const warning = document.getElementById('no-correct-warning');
-
-            // Only validate for choice-based problems
-            if (problemType === 'numericalresponse' || problemType === 'stringresponse') {
-                warning.classList.remove('show');
-                return true;
-            }
-
-            // Check if any choice is marked correct
-            const hasCorrect = document.querySelector('.choice-item input:checked') !== null;
-            const hasChoices = document.querySelectorAll('.choice-item').length > 0;
-
-            if (hasChoices && !hasCorrect) {
-                warning.classList.add('show');
-                return false;
-            } else {
-                warning.classList.remove('show');
-                return true;
-            }
-        }
-
-        function quillToHtml(editor) {
-            let html = editor.root.innerHTML;
-            // Clean up empty content
-            if (html === '<p><br></p>') return '';
-
-            // Remove Quill's code-block containers if any remain
-            html = html.replace(/<div class="ql-code-block-container"[^>]*>.*?<\/div><\/div>/gs, '');
-            html = html.replace(/<div class="ql-code-block"[^>]*>(.*?)<\/div>/gs, '<code>$1</code>');
-
-            // Only remove empty <p> tags, keep ones with content
-            html = html.replace(/<p><br><\/p>/g, '');
-            html = html.replace(/<p><\/p>/g, '');
-            html = html.replace(/<p>\s*<\/p>/g, '');
-
-            // If it's just a single <p> wrapper around content (no nested <p>), unwrap it
-            const singlePMatch = html.match(/^<p>([^]*)<\/p>$/);
-            if (singlePMatch && !singlePMatch[1].includes('<p>') && !singlePMatch[1].includes('</p>')) {
-                html = singlePMatch[1];
-            }
-
-            return html.trim();
-        }
-
+        // Generate OLX
         function generateOLX() {
-            if (isImporting) return; // Don't generate while importing
+            if (isImporting) return;
 
             isGenerating = true;
-
-            // Validate choices
             validateChoices();
 
             const problemType = document.getElementById('problemType').value;
-            const labelHtml = quillToHtml(labelEditor);
-            const explanationHtml = quillToHtml(explanationEditor);
+            const labelHtml = getEditorContent('label-editor');
+            const explanationHtml = getEditorContent('explanation-editor');
 
             // Gather hints
             const hints = [];
-            const hintElements = document.querySelectorAll('.hint-item');
-            hintElements.forEach(element => {
+            document.querySelectorAll('.hint-item').forEach(element => {
                 const id = element.id.replace('hint-', '');
-                const editor = hintEditors[id];
-                if (editor) {
-                    const html = quillToHtml(editor);
-                    if (html) {
-                        hints.push(html);
-                    }
-                }
+                const html = getEditorContent(`hint-editor-${id}`);
+                if (html) hints.push(html);
             });
 
             // Build OLX
@@ -712,9 +683,7 @@
                 const tolerance = escapeXml(document.getElementById('answer-tolerance').value || '');
 
                 olx += `  <numericalresponse answer="${answer}"`;
-                if (tolerance) {
-                    olx += ` tolerance="${tolerance}"`;
-                }
+                if (tolerance) olx += ` tolerance="${tolerance}"`;
                 olx += `>\n`;
                 olx += `    <label>${labelHtml}</label>\n`;
                 olx += `    <textline/>\n`;
@@ -730,65 +699,43 @@
                 olx += `  </stringresponse>\n`;
 
             } else if (problemType === 'multiplechoiceresponse') {
-                // Gather choices
                 const choices = [];
-                const choiceElements = document.querySelectorAll('.choice-item');
-                choiceElements.forEach(element => {
+                document.querySelectorAll('.choice-item').forEach(element => {
                     const id = element.id.replace('choice-', '');
-                    const editor = choiceEditors[id];
-                    if (editor) {
-                        const input = element.querySelector('input');
-                        const isCorrect = input.checked;
-                        const html = quillToHtml(editor);
-                        if (html) {
-                            choices.push({ html, isCorrect });
-                        }
-                    }
+                    const input = element.querySelector('input');
+                    const html = getEditorContent(`choice-editor-${id}`);
+                    if (html) choices.push({ html, isCorrect: input.checked });
                 });
 
                 olx += `  <multiplechoiceresponse>\n`;
                 olx += `    <label>${labelHtml}</label>\n`;
                 olx += `    <choicegroup type="MultipleChoice" shuffle="true">\n`;
-
                 choices.forEach(choice => {
-                    const correct = choice.isCorrect ? 'true' : 'false';
-                    olx += `      <choice correct="${correct}">${choice.html}</choice>\n`;
+                    olx += `      <choice correct="${choice.isCorrect}">${choice.html}</choice>\n`;
                 });
-
                 olx += `    </choicegroup>\n`;
                 olx += `  </multiplechoiceresponse>\n`;
 
             } else {
-                // choiceresponse (checkboxes)
                 const choices = [];
-                const choiceElements = document.querySelectorAll('.choice-item');
-                choiceElements.forEach(element => {
+                document.querySelectorAll('.choice-item').forEach(element => {
                     const id = element.id.replace('choice-', '');
-                    const editor = choiceEditors[id];
-                    if (editor) {
-                        const input = element.querySelector('input');
-                        const isCorrect = input.checked;
-                        const html = quillToHtml(editor);
-                        if (html) {
-                            choices.push({ html, isCorrect });
-                        }
-                    }
+                    const input = element.querySelector('input');
+                    const html = getEditorContent(`choice-editor-${id}`);
+                    if (html) choices.push({ html, isCorrect: input.checked });
                 });
 
                 olx += `  <choiceresponse>\n`;
                 olx += `    <label>${labelHtml}</label>\n`;
                 olx += `    <checkboxgroup shuffle="true">\n`;
-
                 choices.forEach(choice => {
-                    const correct = choice.isCorrect ? 'true' : 'false';
-                    olx += `      <choice correct="${correct}">${choice.html}</choice>\n`;
+                    olx += `      <choice correct="${choice.isCorrect}">${choice.html}</choice>\n`;
                 });
-
                 olx += `    </checkboxgroup>\n`;
                 olx += `  </choiceresponse>\n`;
             }
 
-            // Add solution/explanation
+            // Add solution
             if (explanationHtml) {
                 olx += `  <solution>\n`;
                 olx += `    <div class="detailed-solution">\n`;
@@ -813,156 +760,49 @@
             isGenerating = false;
         }
 
+        // Copy OLX
         function copyOLX() {
             const output = document.getElementById('olx-output');
-            if (!output.value) {
-                generateOLX();
-            }
+            if (!output.value) generateOLX();
 
             navigator.clipboard.writeText(output.value).then(() => {
                 const feedback = document.getElementById('copyFeedback');
                 feedback.classList.add('show');
-                setTimeout(() => {
-                    feedback.classList.remove('show');
-                }, 2000);
-            }).catch(err => {
-                // Fallback for older browsers
-                output.select();
-                document.execCommand('copy');
-                const feedback = document.getElementById('copyFeedback');
-                feedback.classList.add('show');
-                setTimeout(() => {
-                    feedback.classList.remove('show');
-                }, 2000);
+                setTimeout(() => feedback.classList.remove('show'), 2000);
             });
         }
 
         // Clear all editors
         function clearAllEditors() {
-            // Clear main editors
-            labelEditor.root.innerHTML = '';
-            explanationEditor.root.innerHTML = '';
-
-            // Clear choices
+            document.getElementById('label-editor').innerHTML = '';
+            document.getElementById('explanation-editor').innerHTML = '';
             document.getElementById('choices-container').innerHTML = '';
-            choiceEditors = [];
-            choiceCount = 0;
-
-            // Clear hints
             document.getElementById('hints-container').innerHTML = '';
-            hintEditors = [];
-            hintCount = 0;
-
-            // Clear answer fields
             document.getElementById('correct-answer').value = '';
             document.getElementById('answer-tolerance').value = '';
             document.getElementById('string-case-sensitive').checked = false;
+            choiceCount = 0;
+            hintCount = 0;
         }
 
-        // Add choice with content
-        function addChoiceWithContent(html, isCorrect = false) {
-            const container = document.getElementById('choices-container');
-            const choiceId = choiceCount++;
-            const problemType = document.getElementById('problemType').value;
-            const inputType = problemType === 'choiceresponse' ? 'checkbox' : 'radio';
-
-            const choiceDiv = document.createElement('div');
-            choiceDiv.className = 'choice-item' + (isCorrect ? ' correct' : '');
-            choiceDiv.id = `choice-${choiceId}`;
-            choiceDiv.innerHTML = `
-                <div class="choice-controls">
-                    <label class="radio-label">
-                        <input type="${inputType}" name="correct-choice" value="${choiceId}" ${isCorrect ? 'checked' : ''} onchange="updateCorrectChoice(${choiceId})">
-                        Correct
-                    </label>
-                    <button class="btn btn-danger" onclick="removeChoice(${choiceId})">Remove</button>
-                </div>
-                <div class="choice-editor">
-                    <div class="quill-wrapper small">
-                        <div id="choice-editor-${choiceId}"></div>
-                    </div>
-                </div>
-            `;
-            container.appendChild(choiceDiv);
-
-            const editor = new Quill(`#choice-editor-${choiceId}`, {
-                theme: 'snow',
-                modules: { toolbar: minimalToolbar },
-                placeholder: 'Enter choice text...'
-            });
-
-            // Set content
-            if (html) {
-                editor.root.innerHTML = html;
-            }
-
-            choiceEditors[choiceId] = editor;
-            return editor;
-        }
-
-        // Add hint with content
-        function addHintWithContent(html) {
-            const container = document.getElementById('hints-container');
-            const hintId = hintCount++;
-
-            const hintDiv = document.createElement('div');
-            hintDiv.className = 'hint-item';
-            hintDiv.id = `hint-${hintId}`;
-            hintDiv.innerHTML = `
-                <div style="display: flex; gap: 10px; align-items: flex-start;">
-                    <div style="flex: 1;">
-                        <div class="quill-wrapper small">
-                            <div id="hint-editor-${hintId}"></div>
-                        </div>
-                    </div>
-                    <button class="btn btn-danger" onclick="removeHint(${hintId})" style="margin-top: 8px;">Remove</button>
-                </div>
-            `;
-            container.appendChild(hintDiv);
-
-            const editor = new Quill(`#hint-editor-${hintId}`, {
-                theme: 'snow',
-                modules: { toolbar: minimalToolbar },
-                placeholder: 'Enter hint text...'
-            });
-
-            if (html) {
-                editor.root.innerHTML = html;
-            }
-
-            hintEditors[hintId] = editor;
-            return editor;
-        }
-
-        // Import OLX into editor
+        // Import OLX
         function importOLX(silent = false) {
-            if (isGenerating) return; // Don't import while generating
+            if (isGenerating) return;
 
             const olxText = document.getElementById('olx-output').value.trim();
-            if (!olxText) {
-                return;
-            }
-
-            // Quick check if it looks like OLX
-            if (!olxText.includes('<problem')) {
-                return;
-            }
+            if (!olxText || !olxText.includes('<problem')) return;
 
             isImporting = true;
 
             try {
-                // Parse the XML
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(olxText, 'text/xml');
 
-                // Check for parse errors
-                const parseError = doc.querySelector('parsererror');
-                if (parseError) {
+                if (doc.querySelector('parsererror')) {
                     isImporting = false;
-                    return; // Silently fail for invalid XML
+                    return;
                 }
 
-                // Clear existing content
                 clearAllEditors();
 
                 // Detect problem type
@@ -986,68 +826,59 @@
                     responseElement = stringResponse;
                 } else {
                     isImporting = false;
-                    return; // Unsupported problem type
+                    return;
                 }
 
-                // Set problem type dropdown and update UI
                 document.getElementById('problemType').value = problemType;
                 updateProblemType();
 
-                // Extract label/question
+                // Helper to get inner content
+                const getInnerContent = (el) => {
+                    if (!el) return '';
+                    const serializer = new XMLSerializer();
+                    let content = '';
+                    for (const child of el.childNodes) {
+                        content += serializer.serializeToString(child);
+                    }
+                    return content.replace(/\s*xmlns="[^"]*"/g, '');
+                };
+
+                // Extract label
                 const labelEl = responseElement.querySelector('label');
                 if (labelEl) {
-                    labelEditor.root.innerHTML = labelEl.innerHTML;
+                    document.getElementById('label-editor').innerHTML = getInnerContent(labelEl);
                 }
 
                 // Handle different problem types
                 if (problemType === 'numericalresponse') {
-                    const answer = responseElement.getAttribute('answer') || '';
-                    const tolerance = responseElement.getAttribute('tolerance') || '';
-                    document.getElementById('correct-answer').value = answer;
-                    document.getElementById('answer-tolerance').value = tolerance;
-
+                    document.getElementById('correct-answer').value = responseElement.getAttribute('answer') || '';
+                    document.getElementById('answer-tolerance').value = responseElement.getAttribute('tolerance') || '';
                 } else if (problemType === 'stringresponse') {
-                    const answer = responseElement.getAttribute('answer') || '';
-                    const type = responseElement.getAttribute('type') || 'ci';
-                    document.getElementById('correct-answer').value = answer;
-                    document.getElementById('string-case-sensitive').checked = (type === 'cs');
-
+                    document.getElementById('correct-answer').value = responseElement.getAttribute('answer') || '';
+                    document.getElementById('string-case-sensitive').checked = responseElement.getAttribute('type') === 'cs';
                 } else {
-                    // Extract choices for multiple choice / checkbox
                     const choices = responseElement.querySelectorAll('choice');
                     choices.forEach(choice => {
                         const isCorrect = choice.getAttribute('correct') === 'true';
-                        const html = choice.innerHTML;
-                        addChoiceWithContent(html, isCorrect);
+                        addChoice(isCorrect, getInnerContent(choice));
                     });
                 }
 
-                // Extract solution/explanation - get everything inside <solution>
+                // Extract solution
                 const solution = doc.querySelector('solution');
                 if (solution) {
-                    // Use XMLSerializer since innerHTML may not work on XML documents
-                    const serializer = new XMLSerializer();
-                    let content = '';
-                    for (const child of solution.childNodes) {
-                        content += serializer.serializeToString(child);
-                    }
-                    // Remove <p>Explanation</p> header if present (case insensitive)
+                    let content = getInnerContent(solution);
                     content = content.replace(/<p>\s*Explanation\s*<\/p>/gi, '');
-                    // Remove xmlns attributes added by serializer
-                    content = content.replace(/\s*xmlns="[^"]*"/g, '');
-                    explanationEditor.root.innerHTML = content.trim();
+                    document.getElementById('explanation-editor').innerHTML = content.trim();
                 }
 
                 // Extract hints
                 const demandHint = doc.querySelector('demandhint');
                 if (demandHint) {
                     const hints = demandHint.querySelectorAll('hint');
-                    hints.forEach(hint => {
-                        addHintWithContent(hint.innerHTML);
-                    });
+                    hints.forEach(hint => addHint(getInnerContent(hint)));
                 }
 
-                // Show success feedback (unless silent)
                 if (!silent) {
                     const feedback = document.getElementById('copyFeedback');
                     feedback.textContent = 'OLX imported!';
@@ -1060,10 +891,7 @@
                     }, 1500);
                 }
 
-                // Delay resetting isImporting to prevent auto-generate from overwriting pasted OLX
-                setTimeout(() => {
-                    isImporting = false;
-                }, 600);
+                setTimeout(() => { isImporting = false; }, 600);
 
             } catch (e) {
                 console.error('Import error:', e);
@@ -1071,43 +899,11 @@
             }
         }
 
-        // Auto-generate OLX on content change
-        function setupAutoGenerate() {
-            labelEditor.on('text-change', debounce(generateOLX, 500));
-            explanationEditor.on('text-change', debounce(generateOLX, 500));
-        }
-
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-
-        // Initialize - start empty for import workflow
-        setupAutoGenerate();
-
-        // Auto-import when OLX is pasted
+        // Auto-import on paste
         const olxTextarea = document.getElementById('olx-output');
-        olxTextarea.addEventListener('paste', (e) => {
-            // Use setTimeout to let the paste complete first
-            setTimeout(() => {
-                importOLX(false);
-            }, 50);
+        olxTextarea.addEventListener('paste', () => {
+            setTimeout(() => importOLX(false), 50);
         });
-
-        // Also try to import on input (for other paste methods)
-        olxTextarea.addEventListener('input', debounce(() => {
-            const text = olxTextarea.value.trim();
-            if (text.includes('<problem') && !isGenerating) {
-                importOLX(true); // Silent import on regular input
-            }
-        }, 300));
     </script>
 </body>
 </html>
