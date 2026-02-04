@@ -969,6 +969,8 @@
             document.getElementById('max-attempts').value = '';
             choiceCount = 0;
             hintCount = 0;
+            // Hide math previews
+            document.querySelectorAll('.math-preview').forEach(el => el.classList.remove('visible'));
         }
 
         // Clear everything
