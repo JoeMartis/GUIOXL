@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Open edX Problem Editor</title>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+            startup: { typeset: false }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
     <style>
         * {
             box-sizing: border-box;
@@ -375,6 +382,29 @@
             border: 1px solid #ddd;
             border-radius: 4px;
         }
+
+        .math-preview {
+            padding: 8px 10px;
+            background: #fafafa;
+            border: 1px solid #eee;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            font-size: 14px;
+            color: #333;
+            display: none;
+        }
+
+        .math-preview.visible {
+            display: block;
+        }
+
+        .math-preview-label {
+            font-size: 10px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
     </style>
 </head>
 <body>
@@ -435,6 +465,10 @@
                     </div>
                     <div id="label-editor" class="content-editable" contenteditable="true" data-placeholder="Enter your question here..."></div>
                 </div>
+                <div id="label-preview" class="math-preview">
+                    <div class="math-preview-label">Preview</div>
+                    <div id="label-preview-content"></div>
+                </div>
             </div>
 
             <div class="section" id="choices-section">
@@ -483,6 +517,10 @@
                         <button onclick="formatDoc('insertUnorderedList')" title="Bullet List">• List</button>
                     </div>
                     <div id="explanation-editor" class="content-editable" contenteditable="true" data-placeholder="Enter the explanation/solution here..."></div>
+                </div>
+                <div id="explanation-preview" class="math-preview">
+                    <div class="math-preview-label">Preview</div>
+                    <div id="explanation-preview-content"></div>
                 </div>
             </div>
 
@@ -1097,6 +1135,44 @@
         document.getElementById('string-case-sensitive').addEventListener('change', debouncedGenerate);
         document.getElementById('display-name').addEventListener('input', debouncedGenerate);
         document.getElementById('max-attempts').addEventListener('input', debouncedGenerate);
+
+        // Live MathJax preview
+        function updateMathPreview(editorId, previewId) {
+            const editor = document.getElementById(editorId);
+            const preview = document.getElementById(previewId);
+            const previewContent = document.getElementById(previewId + '-content');
+            if (!editor || !preview || !previewContent) return;
+
+            const html = editor.innerHTML;
+            const hasLatex = /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/.test(html);
+
+            if (hasLatex) {
+                previewContent.innerHTML = html;
+                preview.classList.add('visible');
+                if (window.MathJax && MathJax.typesetPromise) {
+                    MathJax.typesetClear([previewContent]);
+                    MathJax.typesetPromise([previewContent]);
+                }
+            } else {
+                preview.classList.remove('visible');
+            }
+        }
+
+        const debouncedLabelPreview = debounce(() => updateMathPreview('label-editor', 'label-preview'), 500);
+        const debouncedExplanationPreview = debounce(() => updateMathPreview('explanation-editor', 'explanation-preview'), 500);
+
+        document.getElementById('label-editor').addEventListener('input', debouncedLabelPreview);
+        document.getElementById('explanation-editor').addEventListener('input', debouncedExplanationPreview);
+
+        // Also update previews after import
+        const origImportOLX = importOLX;
+        importOLX = function(silent) {
+            origImportOLX(silent);
+            setTimeout(() => {
+                updateMathPreview('label-editor', 'label-preview');
+                updateMathPreview('explanation-editor', 'explanation-preview');
+            }, 100);
+        };
     </script>
 </body>
 </html>
