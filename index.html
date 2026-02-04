@@ -1059,7 +1059,10 @@
                     }, 1500);
                 }
 
-                isImporting = false;
+                // Delay resetting isImporting to prevent auto-generate from overwriting pasted OLX
+                setTimeout(() => {
+                    isImporting = false;
+                }, 600);
 
             } catch (e) {
                 console.error('Import error:', e);
