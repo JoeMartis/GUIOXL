@@ -904,6 +904,29 @@
         olxTextarea.addEventListener('paste', () => {
             setTimeout(() => importOLX(false), 50);
         });
+
+        // Auto-generate OLX when editing preview boxes
+        function debounce(func, wait) {
+            let timeout;
+            return (...args) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func(...args), wait);
+            };
+        }
+
+        const debouncedGenerate = debounce(generateOLX, 400);
+
+        // Listen on the editor panel for any input in contenteditable areas
+        document.querySelector('.editor-panel').addEventListener('input', (e) => {
+            if (e.target.classList.contains('content-editable')) {
+                debouncedGenerate();
+            }
+        });
+
+        // Also regenerate when correct answer, tolerance, or case-sensitivity changes
+        document.getElementById('correct-answer').addEventListener('input', debouncedGenerate);
+        document.getElementById('answer-tolerance').addEventListener('input', debouncedGenerate);
+        document.getElementById('string-case-sensitive').addEventListener('change', debouncedGenerate);
     </script>
 </body>
 </html>
