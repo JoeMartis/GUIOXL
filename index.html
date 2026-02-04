@@ -321,6 +321,21 @@
         .hidden {
             display: none !important;
         }
+
+        .validation-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            display: none;
+        }
+
+        .validation-warning.show {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -366,6 +381,9 @@
                 <div class="section-header">
                     <span class="section-title">Answer Choices</span>
                     <button class="btn btn-primary btn-sm" onclick="addChoice()">+ Add Choice</button>
+                </div>
+                <div class="validation-warning" id="no-correct-warning">
+                    No correct answer selected. Please mark at least one choice as correct.
                 </div>
                 <div id="choices-container"></div>
             </div>
@@ -489,6 +507,7 @@
             if (element) {
                 element.remove();
                 delete choiceEditors[id];
+                validateChoices();
             }
         }
 
@@ -514,6 +533,8 @@
                     choiceDiv.classList.add('correct');
                 }
             }
+
+            validateChoices();
         }
 
         function updateProblemType() {
@@ -611,6 +632,29 @@
                 .replace(/'/g, '&apos;');
         }
 
+        function validateChoices() {
+            const problemType = document.getElementById('problemType').value;
+            const warning = document.getElementById('no-correct-warning');
+
+            // Only validate for choice-based problems
+            if (problemType === 'numericalresponse' || problemType === 'stringresponse') {
+                warning.classList.remove('show');
+                return true;
+            }
+
+            // Check if any choice is marked correct
+            const hasCorrect = document.querySelector('.choice-item input:checked') !== null;
+            const hasChoices = document.querySelectorAll('.choice-item').length > 0;
+
+            if (hasChoices && !hasCorrect) {
+                warning.classList.add('show');
+                return false;
+            } else {
+                warning.classList.remove('show');
+                return true;
+            }
+        }
+
         function quillToHtml(editor) {
             let html = editor.root.innerHTML;
             // Clean up empty paragraphs
@@ -622,6 +666,10 @@
             if (isImporting) return; // Don't generate while importing
 
             isGenerating = true;
+
+            // Validate choices
+            validateChoices();
+
             const problemType = document.getElementById('problemType').value;
             const labelHtml = quillToHtml(labelEditor);
             const explanationHtml = quillToHtml(explanationEditor);
