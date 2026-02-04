@@ -190,6 +190,27 @@
             resize: vertical;
         }
 
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #f57c00;
+        }
+
+        .import-section {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .import-instructions {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
         .output-header {
             display: flex;
             justify-content: space-between;
@@ -309,14 +330,18 @@
         </div>
 
         <div class="output-panel">
-            <div class="output-header">
-                <span class="output-title">Generated OLX</span>
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="generateOLX()">Generate OLX</button>
-                    <button class="btn btn-success" onclick="copyOLX()">Copy to Clipboard</button>
+            <div class="import-section">
+                <div class="output-header">
+                    <span class="output-title">Import / Edit OLX</span>
+                    <button class="btn btn-warning" onclick="importOLX()">Import OLX</button>
                 </div>
+                <p class="import-instructions">Paste your OLX below and click "Import OLX" to load it into the editor. Or edit visually and generate new OLX.</p>
             </div>
-            <textarea id="olx-output" readonly placeholder="Click 'Generate OLX' to see the output..."></textarea>
+            <textarea id="olx-output" placeholder="Paste OLX here to import, or use the editor above to create new problems..."></textarea>
+            <div class="btn-group" style="margin-top: 15px; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="generateOLX()">Generate OLX</button>
+                <button class="btn btn-success" onclick="copyOLX()">Copy to Clipboard</button>
+            </div>
         </div>
     </div>
 
@@ -619,6 +644,208 @@
             });
         }
 
+        // Clear all editors
+        function clearAllEditors() {
+            // Clear main editors
+            labelEditor.root.innerHTML = '';
+            explanationEditor.root.innerHTML = '';
+
+            // Clear choices
+            document.getElementById('choices-container').innerHTML = '';
+            choiceEditors = [];
+            choiceCount = 0;
+
+            // Clear hints
+            document.getElementById('hints-container').innerHTML = '';
+            hintEditors = [];
+            hintCount = 0;
+        }
+
+        // Add choice with content
+        function addChoiceWithContent(html, isCorrect = false) {
+            const container = document.getElementById('choices-container');
+            const choiceId = choiceCount++;
+            const problemType = document.getElementById('problemType').value;
+            const inputType = problemType === 'choiceresponse' ? 'checkbox' : 'radio';
+
+            const choiceDiv = document.createElement('div');
+            choiceDiv.className = 'choice-item' + (isCorrect ? ' correct' : '');
+            choiceDiv.id = `choice-${choiceId}`;
+            choiceDiv.innerHTML = `
+                <div class="choice-controls">
+                    <label class="radio-label">
+                        <input type="${inputType}" name="correct-choice" value="${choiceId}" ${isCorrect ? 'checked' : ''} onchange="updateCorrectChoice(${choiceId})">
+                        Correct
+                    </label>
+                    <button class="btn btn-danger" onclick="removeChoice(${choiceId})">Remove</button>
+                </div>
+                <div class="choice-editor">
+                    <div class="quill-wrapper small">
+                        <div id="choice-editor-${choiceId}"></div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(choiceDiv);
+
+            const editor = new Quill(`#choice-editor-${choiceId}`, {
+                theme: 'snow',
+                modules: { toolbar: minimalToolbar },
+                placeholder: 'Enter choice text...'
+            });
+
+            // Set content
+            if (html) {
+                editor.root.innerHTML = html;
+            }
+
+            choiceEditors[choiceId] = editor;
+            return editor;
+        }
+
+        // Add hint with content
+        function addHintWithContent(html) {
+            const container = document.getElementById('hints-container');
+            const hintId = hintCount++;
+
+            const hintDiv = document.createElement('div');
+            hintDiv.className = 'hint-item';
+            hintDiv.id = `hint-${hintId}`;
+            hintDiv.innerHTML = `
+                <div style="display: flex; gap: 10px; align-items: flex-start;">
+                    <div style="flex: 1;">
+                        <div class="quill-wrapper small">
+                            <div id="hint-editor-${hintId}"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" onclick="removeHint(${hintId})" style="margin-top: 8px;">Remove</button>
+                </div>
+            `;
+            container.appendChild(hintDiv);
+
+            const editor = new Quill(`#hint-editor-${hintId}`, {
+                theme: 'snow',
+                modules: { toolbar: minimalToolbar },
+                placeholder: 'Enter hint text...'
+            });
+
+            if (html) {
+                editor.root.innerHTML = html;
+            }
+
+            hintEditors[hintId] = editor;
+            return editor;
+        }
+
+        // Import OLX into editor
+        function importOLX() {
+            const olxText = document.getElementById('olx-output').value.trim();
+            if (!olxText) {
+                alert('Please paste OLX content into the text area first.');
+                return;
+            }
+
+            try {
+                // Parse the XML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(olxText, 'text/xml');
+
+                // Check for parse errors
+                const parseError = doc.querySelector('parsererror');
+                if (parseError) {
+                    alert('Invalid XML. Please check your OLX format.');
+                    return;
+                }
+
+                // Clear existing content
+                clearAllEditors();
+
+                // Detect problem type
+                const multipleChoice = doc.querySelector('multiplechoiceresponse');
+                const checkboxChoice = doc.querySelector('choiceresponse');
+
+                let problemType, responseElement;
+                if (multipleChoice) {
+                    problemType = 'multiplechoiceresponse';
+                    responseElement = multipleChoice;
+                    document.getElementById('problemType').value = 'multiplechoiceresponse';
+                } else if (checkboxChoice) {
+                    problemType = 'choiceresponse';
+                    responseElement = checkboxChoice;
+                    document.getElementById('problemType').value = 'choiceresponse';
+                } else {
+                    alert('Unsupported problem type. Only multiplechoiceresponse and choiceresponse are supported.');
+                    return;
+                }
+
+                // Extract label/question
+                const labelEl = responseElement.querySelector('label');
+                if (labelEl) {
+                    labelEditor.root.innerHTML = labelEl.innerHTML;
+                }
+
+                // Extract choices
+                const choices = responseElement.querySelectorAll('choice');
+                choices.forEach(choice => {
+                    const isCorrect = choice.getAttribute('correct') === 'true';
+                    const html = choice.innerHTML;
+                    addChoiceWithContent(html, isCorrect);
+                });
+
+                // Extract solution/explanation
+                const solution = doc.querySelector('solution');
+                if (solution) {
+                    // Try to get the detailed solution content
+                    const detailedSolution = solution.querySelector('.detailed-solution');
+                    if (detailedSolution) {
+                        // Get content after the "Explanation" paragraph if present
+                        let content = '';
+                        const children = detailedSolution.children;
+                        let foundExplanationHeader = false;
+                        for (let i = 0; i < children.length; i++) {
+                            const child = children[i];
+                            if (foundExplanationHeader) {
+                                content += child.outerHTML;
+                            } else if (child.textContent.trim().toLowerCase() === 'explanation') {
+                                foundExplanationHeader = true;
+                            } else {
+                                content += child.outerHTML;
+                            }
+                        }
+                        if (!content) {
+                            content = detailedSolution.innerHTML;
+                        }
+                        explanationEditor.root.innerHTML = content;
+                    } else {
+                        explanationEditor.root.innerHTML = solution.innerHTML;
+                    }
+                }
+
+                // Extract hints
+                const demandHint = doc.querySelector('demandhint');
+                if (demandHint) {
+                    const hints = demandHint.querySelectorAll('hint');
+                    hints.forEach(hint => {
+                        addHintWithContent(hint.innerHTML);
+                    });
+                }
+
+                // Show success feedback
+                const feedback = document.getElementById('copyFeedback');
+                feedback.textContent = 'OLX imported successfully!';
+                feedback.style.background = '#0075b4';
+                feedback.classList.add('show');
+                setTimeout(() => {
+                    feedback.classList.remove('show');
+                    feedback.textContent = 'Copied to clipboard!';
+                    feedback.style.background = '#4caf50';
+                }, 2000);
+
+            } catch (e) {
+                console.error('Import error:', e);
+                alert('Error importing OLX: ' + e.message);
+            }
+        }
+
         // Auto-generate OLX on content change
         function setupAutoGenerate() {
             labelEditor.on('text-change', debounce(generateOLX, 500));
@@ -637,16 +864,11 @@
             };
         }
 
-        // Initialize with some default choices
-        addChoice(true);  // First choice, marked as correct
-        addChoice(false);
-        addChoice(false);
-        addChoice(false);
+        // Initialize - start empty for import workflow
+        // User can click "Add Choice" to add choices manually
+        // or paste OLX and click "Import OLX"
 
         setupAutoGenerate();
-
-        // Generate initial OLX
-        setTimeout(generateOLX, 100);
     </script>
 </body>
 </html>
