@@ -683,7 +683,7 @@
 
                 olx += `  <multiplechoiceresponse>\n`;
                 olx += `    <label>${labelHtml}</label>\n`;
-                olx += `    <choicegroup type="MultipleChoice">\n`;
+                olx += `    <choicegroup type="MultipleChoice" shuffle="true">\n`;
 
                 choices.forEach(choice => {
                     const correct = choice.isCorrect ? 'true' : 'false';
@@ -712,7 +712,7 @@
 
                 olx += `  <choiceresponse>\n`;
                 olx += `    <label>${labelHtml}</label>\n`;
-                olx += `    <checkboxgroup>\n`;
+                olx += `    <checkboxgroup shuffle="true">\n`;
 
                 choices.forEach(choice => {
                     const correct = choice.isCorrect ? 'true' : 'false';
