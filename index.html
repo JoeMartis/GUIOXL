@@ -570,16 +570,20 @@
             }
         }
 
-        // Get innerHTML from contenteditable, clean up browser-generated divs
+        // Get innerHTML from contenteditable, clean up browser-generated noise
         function getEditorContent(id) {
             const el = document.getElementById(id);
             if (!el) return '';
             let html = el.innerHTML.trim();
             if (html === '' || html === '<br>') return '';
+            // Strip browser-injected span wrappers (font-family, color, etc.)
+            html = html.replace(/<span\s+style="[^"]*">([\s\S]*?)<\/span>/gi, '$1');
             // Convert browser-generated div line wrapping to <br/>
-            html = html.replace(/<div><br\s*\/?><\/div>/gi, '<br/>');
-            html = html.replace(/<\/div><div>/gi, '<br/>');
-            html = html.replace(/<\/?div>/gi, '');
+            html = html.replace(/<div[^>]*><br\s*\/?><\/div>/gi, '<br/>');
+            html = html.replace(/<\/div><div[^>]*>/gi, '<br/>');
+            html = html.replace(/<\/?div[^>]*>/gi, '');
+            // Normalize &nbsp; to regular space
+            html = html.replace(/&nbsp;/g, ' ');
             // Normalize all br variants to self-closing
             html = html.replace(/<br\s*\/?>/gi, '<br/>');
             // Collapse 3+ consecutive br tags to 2
