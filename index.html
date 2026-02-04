@@ -664,14 +664,16 @@
             html = html.replace(/<div class="ql-code-block-container"[^>]*>.*?<\/div><\/div>/gs, '');
             html = html.replace(/<div class="ql-code-block"[^>]*>(.*?)<\/div>/gs, '<code>$1</code>');
 
-            // Strip <p> tags completely, preserve content with space between paragraphs
-            html = html.replace(/<\/p>\s*<p>/g, ' ');
-            html = html.replace(/<p>/g, '');
-            html = html.replace(/<\/p>/g, '');
-            html = html.replace(/<br>/g, ' ');
+            // Only remove empty <p> tags, keep ones with content
+            html = html.replace(/<p><br><\/p>/g, '');
+            html = html.replace(/<p><\/p>/g, '');
+            html = html.replace(/<p>\s*<\/p>/g, '');
 
-            // Clean up multiple spaces
-            html = html.replace(/\s+/g, ' ');
+            // If it's just a single <p> wrapper around content (no nested <p>), unwrap it
+            const singlePMatch = html.match(/^<p>([^]*)<\/p>$/);
+            if (singlePMatch && !singlePMatch[1].includes('<p>') && !singlePMatch[1].includes('</p>')) {
+                html = singlePMatch[1];
+            }
 
             return html.trim();
         }
