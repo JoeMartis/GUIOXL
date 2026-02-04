@@ -453,7 +453,6 @@
             const selection = window.getSelection();
             if (selection.rangeCount > 0) {
                 const range = selection.getRangeAt(0);
-                const container = range.commonAncestorContainer;
                 const selectedText = range.toString();
                 if (selectedText) {
                     const element = document.createElement(tag);
@@ -485,6 +484,7 @@
         // Get innerHTML from contenteditable, returns empty string if just whitespace
         function getEditorContent(id) {
             const el = document.getElementById(id);
+            if (!el) return '';
             const html = el.innerHTML.trim();
             if (html === '' || html === '<br>') return '';
             return html;
@@ -532,7 +532,6 @@
             const element = document.getElementById(`choice-${id}`);
             if (element) {
                 element.remove();
-                validateChoices();
                 generateOLX();
             }
         }
@@ -557,7 +556,6 @@
                     choiceDiv.classList.add('correct');
                 }
             }
-            validateChoices();
             generateOLX();
         }
 
@@ -794,15 +792,16 @@
             });
         }
 
+        let feedbackTimer = null;
         function showFeedback(text, color) {
+            if (feedbackTimer) clearTimeout(feedbackTimer);
             const feedback = document.getElementById('copyFeedback');
             feedback.textContent = text;
             feedback.style.background = color;
             feedback.classList.add('show');
-            setTimeout(() => {
+            feedbackTimer = setTimeout(() => {
                 feedback.classList.remove('show');
-                feedback.textContent = 'Copied to clipboard!';
-                feedback.style.background = '#4caf50';
+                feedbackTimer = null;
             }, 2000);
         }
 
@@ -901,7 +900,11 @@
                 // Extract solution
                 const solution = doc.querySelector('solution');
                 if (solution) {
-                    let content = getInnerContent(solution);
+                    // Try to get content from inside detailed-solution div to avoid nesting on round-trip
+                    const detailedDiv = solution.querySelector('[class="detailed-solution"]');
+                    const sourceEl = detailedDiv || solution;
+                    let content = getInnerContent(sourceEl);
+                    // Strip "Explanation" header paragraph
                     content = content.replace(/<p>\s*Explanation\s*<\/p>/gi, '');
                     document.getElementById('explanation-editor').innerHTML = content.trim();
                 }
