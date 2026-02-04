@@ -446,6 +446,10 @@
         let hintEditors = [];
         let hintCount = 0;
 
+        // Flags to prevent import/generate loops (must be declared before use)
+        let isImporting = false;
+        let isGenerating = false;
+
         function addChoice(isCorrect = false) {
             const container = document.getElementById('choices-container');
             const choiceId = choiceCount++;
@@ -542,9 +546,6 @@
                 // Update all existing choice inputs
                 document.querySelectorAll('.choice-item').forEach(item => {
                     const input = item.querySelector('input');
-                    const wasChecked = input.checked;
-                    const value = input.value;
-
                     input.type = inputType;
 
                     // For radio, keep only first checked; for checkbox, preserve all
@@ -643,8 +644,8 @@
             let olx = `<problem>\n`;
 
             if (problemType === 'numericalresponse') {
-                const answer = document.getElementById('correct-answer').value || '';
-                const tolerance = document.getElementById('answer-tolerance').value || '';
+                const answer = escapeXml(document.getElementById('correct-answer').value || '');
+                const tolerance = escapeXml(document.getElementById('answer-tolerance').value || '');
 
                 olx += `  <numericalresponse answer="${answer}"`;
                 if (tolerance) {
@@ -656,7 +657,7 @@
                 olx += `  </numericalresponse>\n`;
 
             } else if (problemType === 'stringresponse') {
-                const answer = document.getElementById('correct-answer').value || '';
+                const answer = escapeXml(document.getElementById('correct-answer').value || '');
                 const caseSensitive = document.getElementById('string-case-sensitive').checked;
 
                 olx += `  <stringresponse answer="${answer}" type="${caseSensitive ? 'cs' : 'ci'}">\n`;
@@ -869,10 +870,6 @@
             return editor;
         }
 
-        // Flag to prevent import loops
-        let isImporting = false;
-        let isGenerating = false;
-
         // Import OLX into editor
         function importOLX(silent = false) {
             if (isGenerating) return; // Don't import while generating
@@ -965,7 +962,9 @@
                 const solution = doc.querySelector('solution');
                 if (solution) {
                     // Try to get the detailed solution content
-                    const detailedSolution = solution.querySelector('.detailed-solution');
+                    // Use attribute selector instead of class selector for XML compatibility
+                    const detailedSolution = solution.querySelector('[class="detailed-solution"]') ||
+                                             solution.querySelector('div.detailed-solution');
                     if (detailedSolution) {
                         // Get content after the "Explanation" paragraph if present
                         let content = '';
