@@ -540,6 +540,7 @@
         let hintCount = 0;
         let isImporting = false;
         let isGenerating = false;
+        let extraProblemAttrs = {};
 
         // Format document using execCommand
         function formatDoc(command, value = null) {
@@ -839,6 +840,9 @@
             let problemAttrs = '';
             if (displayName) problemAttrs += ` display_name="${escapeXml(displayName)}"`;
             if (maxAttempts) problemAttrs += ` max_attempts="${escapeXml(maxAttempts)}"`;
+            for (const [key, val] of Object.entries(extraProblemAttrs)) {
+                problemAttrs += ` ${key}="${escapeXml(val)}"`;
+            }
             let olx = `<problem${problemAttrs}>\n`;
 
             if (problemType === 'numericalresponse') {
@@ -969,6 +973,7 @@
             document.getElementById('max-attempts').value = '';
             choiceCount = 0;
             hintCount = 0;
+            extraProblemAttrs = {};
             // Hide math previews
             document.querySelectorAll('.math-preview').forEach(el => el.classList.remove('visible'));
         }
@@ -1005,9 +1010,17 @@
 
                 // Extract problem-level attributes
                 const problemEl = doc.querySelector('problem');
+                extraProblemAttrs = {};
                 if (problemEl) {
                     document.getElementById('display-name').value = problemEl.getAttribute('display_name') || '';
                     document.getElementById('max-attempts').value = problemEl.getAttribute('max_attempts') || '';
+                    // Preserve any extra attributes (url_name, etc.)
+                    const managed = ['display_name', 'max_attempts'];
+                    for (const attr of problemEl.attributes) {
+                        if (!managed.includes(attr.name)) {
+                            extraProblemAttrs[attr.name] = attr.value;
+                        }
+                    }
                 }
 
                 // Detect problem type
